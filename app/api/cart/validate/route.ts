@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import { supabaseAdmin } from "@/lib/supabase";
 import { NextResponse } from "next/server";
 
 interface CartItem {
@@ -17,16 +17,21 @@ export async function POST(request: Request) {
     }
 
     const productIds = items.map((item) => item.productId);
-    const products = await prisma.product.findMany({
-      where: { id: { in: productIds } },
-    });
+    const { data: products, error: productsError } = await supabaseAdmin
+      .from("Product")
+      .select("*")
+      .in("id", productIds);
+
+    if (productsError) {
+      throw productsError;
+    }
 
     const validatedItems = [];
     let totalAmount = 0;
     const errors: string[] = [];
 
     for (const item of items) {
-      const product = products.find((p) => p.id === item.productId);
+      const product = products?.find((p) => p.id === item.productId);
 
       if (!product) {
         errors.push(`Product not found: ${item.productId}`);
@@ -43,12 +48,13 @@ export async function POST(request: Request) {
       const itemTotal = product.price * item.quantity;
       totalAmount += itemTotal;
 
+      const images = JSON.parse(product.images);
       validatedItems.push({
         productId: product.id,
         name: product.name,
         price: product.price,
         quantity: item.quantity,
-        image: product.image,
+        image: images[0] || null,
         itemTotal,
         availableStock: product.stock,
       });

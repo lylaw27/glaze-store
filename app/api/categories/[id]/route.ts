@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import { supabaseAdmin } from "@/lib/supabase";
 import { NextResponse } from "next/server";
 
 // DELETE category by ID
@@ -9,17 +9,17 @@ export async function DELETE(
   try {
     const { id } = params;
 
-    // Check if category exists
-    const category = await prisma.category.findUnique({
-      where: { id },
-      include: {
-        _count: {
-          select: { products: true },
-        },
-      },
-    });
+    // Check if category exists and count products
+    const { data: category, error: fetchError } = await supabaseAdmin
+      .from("Category")
+      .select(`
+        *,
+        products:ProductCategory(count)
+      `)
+      .eq("id", id)
+      .single();
 
-    if (!category) {
+    if (fetchError || !category) {
       return NextResponse.json(
         { error: "Category not found" },
         { status: 404 }
@@ -27,16 +27,22 @@ export async function DELETE(
     }
 
     // Check if category is being used by any products
-    if (category._count.products > 0) {
+    const productCount = category.products?.[0]?.count || 0;
+    if (productCount > 0) {
       return NextResponse.json(
-        { error: `Cannot delete category. It is used by ${category._count.products} product(s)` },
+        { error: `Cannot delete category. It is used by ${productCount} product(s)` },
         { status: 400 }
       );
     }
 
-    await prisma.category.delete({
-      where: { id },
-    });
+    const { error: deleteError } = await supabaseAdmin
+      .from("Category")
+      .delete()
+      .eq("id", id);
+
+    if (deleteError) {
+      throw deleteError;
+    }
 
     return NextResponse.json({ message: "Category deleted successfully" });
   } catch (error) {
@@ -65,31 +71,37 @@ export async function PUT(
       );
     }
 
-    const category = await prisma.category.update({
-      where: { id },
-      data: {
+    const { data: category, error } = await supabaseAdmin
+      .from("Category")
+      .update({
         name: name.trim(),
         type: type.trim(),
-      },
-    });
+      })
+      .eq("id", id)
+      .select()
+      .single();
+
+    if (error) {
+      // Handle unique constraint violation
+      if (error.code === "23505") {
+        return NextResponse.json(
+          { error: "A category with this name already exists" },
+          { status: 409 }
+        );
+      }
+      // Handle record not found
+      if (error.code === "PGRST116") {
+        return NextResponse.json(
+          { error: "Category not found" },
+          { status: 404 }
+        );
+      }
+      throw error;
+    }
 
     return NextResponse.json(category);
   } catch (error: any) {
     console.error("Error updating category:", error);
-
-    if (error.code === "P2025") {
-      return NextResponse.json(
-        { error: "Category not found" },
-        { status: 404 }
-      );
-    }
-
-    if (error.code === "P2002") {
-      return NextResponse.json(
-        { error: "A category with this name already exists" },
-        { status: 409 }
-      );
-    }
 
     return NextResponse.json(
       { error: "Failed to update category" },

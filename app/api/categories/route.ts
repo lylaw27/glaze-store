@@ -1,18 +1,30 @@
-import { prisma } from "@/lib/prisma";
+import { supabaseAdmin } from "@/lib/supabase";
 import { NextResponse } from "next/server";
 
 // GET all categories
 export async function GET() {
   try {
-    const categories = await prisma.category.findMany({
-      orderBy: { name: "asc" },
-      include: {
-        _count: {
-          select: { products: true },
-        },
+    const { data: categories, error } = await supabaseAdmin
+      .from("Category")
+      .select(`
+        *,
+        products:ProductCategory(count)
+      `)
+      .order("name", { ascending: true });
+
+    if (error) {
+      throw error;
+    }
+
+    // Format to match expected structure
+    const formattedCategories = categories?.map((cat: any) => ({
+      ...cat,
+      _count: {
+        products: cat.products?.length || 0,
       },
-    });
-    return NextResponse.json(categories);
+    }));
+
+    return NextResponse.json(formattedCategories);
   } catch (error) {
     console.error("Error fetching categories:", error);
     return NextResponse.json(
@@ -35,24 +47,29 @@ export async function POST(request: Request) {
       );
     }
 
-    const category = await prisma.category.create({
-      data: {
+    const { data: category, error } = await supabaseAdmin
+      .from("Category")
+      .insert({
         name: name.trim(),
         type: type.trim(),
-      },
-    });
+      })
+      .select()
+      .single();
+
+    if (error) {
+      // Handle unique constraint violation
+      if (error.code === "23505") {
+        return NextResponse.json(
+          { error: "A category with this name already exists" },
+          { status: 409 }
+        );
+      }
+      throw error;
+    }
 
     return NextResponse.json(category, { status: 201 });
   } catch (error: any) {
     console.error("Error creating category:", error);
-    
-    // Handle unique constraint violation
-    if (error.code === "P2002") {
-      return NextResponse.json(
-        { error: "A category with this name already exists" },
-        { status: 409 }
-      );
-    }
 
     return NextResponse.json(
       { error: "Failed to create category" },

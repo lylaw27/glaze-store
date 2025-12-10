@@ -1,20 +1,25 @@
-import { prisma } from "@/lib/prisma";
+import { supabaseAdmin } from "@/lib/supabase";
 import { revalidatePath } from "next/cache";
 import { uploadProductImage, deleteProductImages } from "@/lib/supabase";
 import ProductList from "./ProductList";
 import ProductForm from "./ProductForm";
 
 async function getProducts() {
-  return await prisma.product.findMany({
-    orderBy: { createdAt: "desc" },
-    include: {
-      categories: {
-        include: {
-          category: true,
-        },
-      },
-    },
-  });
+  const { data: products, error } = await supabaseAdmin
+    .from("Product")
+    .select(`
+      *,
+      categories:ProductCategory(
+        category:Category(*)
+      )
+    `)
+    .order("createdAt", { ascending: false });
+
+  if (error) {
+    throw error;
+  }
+
+  return products || [];
 }
 
 export default async function ProductsPage() {
@@ -42,23 +47,39 @@ export default async function ProductsPage() {
       }
     }
 
-    await prisma.product.create({
-      data: {
+    // Create product
+    const { data: product, error: productError } = await supabaseAdmin
+      .from("Product")
+      .insert({
         name,
         handle,
         description,
         price,
         stock,
         images: JSON.stringify(imageUrls),
-        categories: {
-          create: categoryIds.map((categoryId: string) => ({
-            category: {
-              connect: { id: categoryId },
-            },
-          })),
-        },
-      },
-    });
+      })
+      .select()
+      .single();
+
+    if (productError) {
+      throw productError;
+    }
+
+    // Create product-category relationships
+    if (categoryIds.length > 0) {
+      const productCategories = categoryIds.map((categoryId: string) => ({
+        productId: product.id,
+        categoryId,
+      }));
+
+      const { error: categoryError } = await supabaseAdmin
+        .from("ProductCategory")
+        .insert(productCategories);
+
+      if (categoryError) {
+        throw categoryError;
+      }
+    }
 
     revalidatePath("/admin/products");
   }
@@ -95,26 +116,48 @@ export default async function ProductsPage() {
     // Combine existing and new images
     const allImages = [...existingImages, ...newImageUrls];
 
-    // Update product and replace categories
-    await prisma.product.update({
-      where: { id },
-      data: {
+    // Update product
+    const { error: updateError } = await supabaseAdmin
+      .from("Product")
+      .update({
         name,
         handle,
         description,
         price,
         stock,
         images: JSON.stringify(allImages),
-        categories: {
-          deleteMany: {},
-          create: categoryIds.map((categoryId: string) => ({
-            category: {
-              connect: { id: categoryId },
-            },
-          })),
-        },
-      },
-    });
+      })
+      .eq("id", id);
+
+    if (updateError) {
+      throw updateError;
+    }
+
+    // Delete all existing category relationships
+    const { error: deleteError } = await supabaseAdmin
+      .from("ProductCategory")
+      .delete()
+      .eq("productId", id);
+
+    if (deleteError) {
+      throw deleteError;
+    }
+
+    // Create new category relationships
+    if (categoryIds.length > 0) {
+      const productCategories = categoryIds.map((categoryId: string) => ({
+        productId: id,
+        categoryId,
+      }));
+
+      const { error: categoryError } = await supabaseAdmin
+        .from("ProductCategory")
+        .insert(productCategories);
+
+      if (categoryError) {
+        throw categoryError;
+      }
+    }
 
     revalidatePath("/admin/products");
   }
@@ -124,10 +167,15 @@ export default async function ProductsPage() {
     const id = formData.get("id") as string;
 
     // Get the product to delete its images
-    const product = await prisma.product.findUnique({
-      where: { id },
-      select: { images: true },
-    });
+    const { data: product, error: fetchError } = await supabaseAdmin
+      .from("Product")
+      .select("images")
+      .eq("id", id)
+      .single();
+
+    if (fetchError) {
+      throw fetchError;
+    }
 
     // Delete all images from Supabase
     if (product?.images) {
@@ -137,9 +185,14 @@ export default async function ProductsPage() {
       }
     }
 
-    await prisma.product.delete({
-      where: { id },
-    });
+    const { error: deleteError } = await supabaseAdmin
+      .from("Product")
+      .delete()
+      .eq("id", id);
+
+    if (deleteError) {
+      throw deleteError;
+    }
 
     revalidatePath("/admin/products");
   }

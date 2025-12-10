@@ -1,18 +1,24 @@
-import { prisma } from "@/lib/prisma";
+import { supabaseAdmin } from "@/lib/supabase";
 import { revalidatePath } from "next/cache";
 import OrderList from "./OrderList";
 
 async function getOrders() {
-  return await prisma.order.findMany({
-    orderBy: { createdAt: "desc" },
-    include: {
-      items: {
-        include: {
-          product: true,
-        },
-      },
-    },
-  });
+  const { data: orders, error } = await supabaseAdmin
+    .from("Order")
+    .select(`
+      *,
+      items:OrderItem(
+        *,
+        product:Product(*)
+      )
+    `)
+    .order("createdAt", { ascending: false });
+
+  if (error) {
+    throw error;
+  }
+
+  return orders || [];
 }
 
 export default async function OrdersPage() {
@@ -23,10 +29,14 @@ export default async function OrdersPage() {
     const id = formData.get("id") as string;
     const status = formData.get("status") as string;
 
-    await prisma.order.update({
-      where: { id },
-      data: { status },
-    });
+    const { error } = await supabaseAdmin
+      .from("Order")
+      .update({ status })
+      .eq("id", id);
+
+    if (error) {
+      throw error;
+    }
 
     revalidatePath("/admin/orders");
   }

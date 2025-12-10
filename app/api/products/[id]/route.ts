@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import { supabaseAdmin } from "@/lib/supabase";
 import { NextResponse } from "next/server";
 
 // GET /api/products/[id] - Get a single product by ID
@@ -9,25 +9,25 @@ export async function GET(
   try {
     const { id } = await params;
 
-    const product = await prisma.product.findUnique({
-      where: { id },
-      include: {
-        categories: {
-          include: {
-            category: true,
-          },
-        },
-      },
-    });
+    const { data: product, error } = await supabaseAdmin
+      .from("Product")
+      .select(`
+        *,
+        categories:ProductCategory(
+          category:Category(*)
+        )
+      `)
+      .eq("id", id)
+      .single();
 
-    if (!product) {
+    if (error || !product) {
       return NextResponse.json({ error: "Product not found" }, { status: 404 });
     }
 
     // Format categories as array of names for backwards compatibility
     const productWithFormattedCategories = {
       ...product,
-      categories: product.categories.map((pc) => pc.category.name),
+      categories: product.categories.map((pc: any) => pc.category.name),
     };
 
     return NextResponse.json(productWithFormattedCategories);

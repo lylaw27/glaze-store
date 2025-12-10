@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import { supabaseAdmin } from "@/lib/supabase";
 import { NextResponse } from "next/server";
 
 // GET /api/orders/[id] - Get a single order by ID (for order confirmation/tracking)
@@ -9,24 +9,23 @@ export async function GET(
   try {
     const { id } = await params;
 
-    const order = await prisma.order.findUnique({
-      where: { id },
-      include: {
-        items: {
-          include: {
-            product: {
-              select: {
-                id: true,
-                name: true,
-                image: true,
-              },
-            },
-          },
-        },
-      },
-    });
+    const { data: order, error } = await supabaseAdmin
+      .from("Order")
+      .select(`
+        *,
+        items:OrderItem(
+          *,
+          product:Product(
+            id,
+            name,
+            images
+          )
+        )
+      `)
+      .eq("id", id)
+      .single();
 
-    if (!order) {
+    if (error || !order) {
       return NextResponse.json({ error: "Order not found" }, { status: 404 });
     }
 

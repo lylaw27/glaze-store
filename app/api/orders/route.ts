@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import { supabaseAdmin } from "@/lib/supabase";
 import { NextResponse } from "next/server";
 
 interface OrderItem {
@@ -41,13 +41,18 @@ export async function POST(request: Request) {
 
     // Get all products for the order items
     const productIds = items.map((item) => item.productId);
-    const products = await prisma.product.findMany({
-      where: { id: { in: productIds } },
-    });
+    const { data: products, error: productsError } = await supabaseAdmin
+      .from("Product")
+      .select("*")
+      .in("id", productIds);
+
+    if (productsError) {
+      throw productsError;
+    }
 
     // Validate all products exist and have sufficient stock
     for (const item of items) {
-      const product = products.find((p) => p.id === item.productId);
+      const product = products?.find((p) => p.id === item.productId);
       if (!product) {
         return NextResponse.json(
           { error: `Product not found: ${item.productId}` },
@@ -64,57 +69,78 @@ export async function POST(request: Request) {
 
     // Calculate total amount
     const totalAmount = items.reduce((sum, item) => {
-      const product = products.find((p) => p.id === item.productId)!;
+      const product = products?.find((p) => p.id === item.productId)!;
       return sum + product.price * item.quantity;
     }, 0);
 
-    // Create order with items in a transaction
-    const order = await prisma.$transaction(async (tx) => {
-      // Create the order
-      const newOrder = await tx.order.create({
-        data: {
-          customerName,
-          customerEmail,
-          customerAddress,
-          paymentId: paymentId || null,
-          totalAmount,
-          status: "confirmed",
-          items: {
-            create: items.map((item) => {
-              const product = products.find((p) => p.id === item.productId)!;
-              return {
-                productId: item.productId,
-                quantity: item.quantity,
-                price: product.price,
-              };
-            }),
-          },
-        },
-        include: {
-          items: {
-            include: {
-              product: true,
-            },
-          },
-        },
-      });
+    // Create the order
+    const { data: newOrder, error: orderError } = await supabaseAdmin
+      .from("Order")
+      .insert({
+        customerName,
+        customerEmail,
+        customerAddress,
+        paymentId: paymentId || null,
+        totalAmount,
+        status: "confirmed",
+      })
+      .select()
+      .single();
 
-      // Update stock for each product
-      for (const item of items) {
-        await tx.product.update({
-          where: { id: item.productId },
-          data: {
-            stock: {
-              decrement: item.quantity,
-            },
-          },
-        });
-      }
+    if (orderError) {
+      throw orderError;
+    }
 
-      return newOrder;
+    // Create order items
+    const orderItems = items.map((item) => {
+      const product = products?.find((p) => p.id === item.productId)!;
+      return {
+        orderId: newOrder.id,
+        productId: item.productId,
+        quantity: item.quantity,
+        price: product.price,
+      };
     });
 
-    return NextResponse.json(order, { status: 201 });
+    const { error: itemsError } = await supabaseAdmin
+      .from("OrderItem")
+      .insert(orderItems);
+
+    if (itemsError) {
+      throw itemsError;
+    }
+
+    // Update stock for each product
+    for (const item of items) {
+      const product = products?.find((p) => p.id === item.productId)!;
+      const { error: stockError } = await supabaseAdmin
+        .from("Product")
+        .update({ stock: product.stock - item.quantity })
+        .eq("id", item.productId);
+
+      if (stockError) {
+        throw stockError;
+      }
+    }
+
+    // Fetch the complete order with items
+    const { data: completeOrder, error: fetchError } = await supabaseAdmin
+      .from("Order")
+      .select(`
+        *,
+        items:OrderItem(
+          *,
+          product:Product(*)
+        )
+      `)
+      .eq("id", newOrder.id)
+      .single();
+
+    if (fetchError) {
+      throw fetchError;
+    }
+
+    return NextResponse.json(completeOrder, { status: 201 });
   } catch (error) {
     console.error("Error creating order:", error);
     return NextResponse.json(

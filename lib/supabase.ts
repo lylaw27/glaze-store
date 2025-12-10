@@ -3,8 +3,152 @@ import { createClient } from "@supabase/supabase-js";
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
-// Server-side client with service role key for storage operations
-export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+// Database types
+export type Database = {
+  public: {
+    Tables: {
+      Category: {
+        Row: {
+          id: string;
+          name: string;
+          type: string;
+          createdAt: string;
+          updatedAt: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          type: string;
+          createdAt?: string;
+          updatedAt?: string;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          type?: string;
+          createdAt?: string;
+          updatedAt?: string;
+        };
+      };
+      Product: {
+        Row: {
+          id: string;
+          name: string;
+          handle: string;
+          description: string | null;
+          price: number;
+          images: string;
+          stock: number;
+          createdAt: string;
+          updatedAt: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          handle: string;
+          description?: string | null;
+          price: number;
+          images?: string;
+          stock?: number;
+          createdAt?: string;
+          updatedAt?: string;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          handle?: string;
+          description?: string | null;
+          price?: number;
+          images?: string;
+          stock?: number;
+          createdAt?: string;
+          updatedAt?: string;
+        };
+      };
+      ProductCategory: {
+        Row: {
+          id: string;
+          productId: string;
+          categoryId: string;
+          createdAt: string;
+        };
+        Insert: {
+          id?: string;
+          productId: string;
+          categoryId: string;
+          createdAt?: string;
+        };
+        Update: {
+          id?: string;
+          productId?: string;
+          categoryId?: string;
+          createdAt?: string;
+        };
+      };
+      Order: {
+        Row: {
+          id: string;
+          customerName: string;
+          customerEmail: string;
+          customerAddress: string;
+          totalAmount: number;
+          status: string;
+          paymentId: string | null;
+          createdAt: string;
+          updatedAt: string;
+        };
+        Insert: {
+          id?: string;
+          customerName: string;
+          customerEmail: string;
+          customerAddress: string;
+          totalAmount: number;
+          status?: string;
+          paymentId?: string | null;
+          createdAt?: string;
+          updatedAt?: string;
+        };
+        Update: {
+          id?: string;
+          customerName?: string;
+          customerEmail?: string;
+          customerAddress?: string;
+          totalAmount?: number;
+          status?: string;
+          paymentId?: string | null;
+          createdAt?: string;
+          updatedAt?: string;
+        };
+      };
+      OrderItem: {
+        Row: {
+          id: string;
+          quantity: number;
+          price: number;
+          productId: string;
+          orderId: string;
+        };
+        Insert: {
+          id?: string;
+          quantity: number;
+          price: number;
+          productId: string;
+          orderId: string;
+        };
+        Update: {
+          id?: string;
+          quantity?: number;
+          price?: number;
+          productId?: string;
+          orderId?: string;
+        };
+      };
+    };
+  };
+};
+
+// Server-side client with service role key for storage and database operations
+export const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceKey);
 
 // Storage bucket name for product images
 export const PRODUCT_IMAGES_BUCKET = "product-images";
