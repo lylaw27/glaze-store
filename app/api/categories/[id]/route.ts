@@ -62,11 +62,11 @@ export async function PUT(
   try {
     const { id } = params;
     const body = await request.json();
-    const { name, type } = body;
+    const { name, handle, type } = body;
 
-    if (!name || !type) {
+    if (!name || !handle || !type) {
       return NextResponse.json(
-        { error: "Name and type are required" },
+        { error: "Name, handle, and type are required" },
         { status: 400 }
       );
     }
@@ -75,6 +75,7 @@ export async function PUT(
       .from("Category")
       .update({
         name: name.trim(),
+        handle: handle.trim().toLowerCase(),
         type: type.trim(),
       })
       .eq("id", id)

@@ -11,6 +11,7 @@ export type Database = {
         Row: {
           id: string;
           name: string;
+          handle: string;
           type: string;
           createdAt: string;
           updatedAt: string;
@@ -18,6 +19,7 @@ export type Database = {
         Insert: {
           id?: string;
           name: string;
+          handle: string;
           type: string;
           createdAt?: string;
           updatedAt?: string;
@@ -25,6 +27,7 @@ export type Database = {
         Update: {
           id?: string;
           name?: string;
+          handle?: string;
           type?: string;
           createdAt?: string;
           updatedAt?: string;

@@ -6,6 +6,7 @@ import CategoryList, { CategoryForm } from "./CategoryList";
 interface Category {
   id: string;
   name: string;
+  handle: string;
   type: string;
   createdAt: string;
   updatedAt: string;
@@ -38,7 +39,7 @@ export default function CategoriesPage() {
     fetchCategories();
   }, []);
 
-  const handleCreate = async (data: { name: string; type: string }) => {
+  const handleCreate = async (data: { name: string; handle: string; type: string }) => {
     const response = await fetch("/api/categories", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -54,7 +55,7 @@ export default function CategoriesPage() {
     setShowForm(false);
   };
 
-  const handleUpdate = async (data: { name: string; type: string }) => {
+  const handleUpdate = async (data: { name: string; handle: string; type: string }) => {
     if (!editingCategory) return;
 
     const response = await fetch(`/api/categories/${editingCategory.id}`, {

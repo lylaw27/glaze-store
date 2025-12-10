@@ -38,11 +38,11 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { name, type } = body;
+    const { name, handle, type } = body;
 
-    if (!name || !type) {
+    if (!name || !handle || !type) {
       return NextResponse.json(
-        { error: "Name and type are required" },
+        { error: "Name, handle, and type are required" },
         { status: 400 }
       );
     }
@@ -51,6 +51,7 @@ export async function POST(request: Request) {
       .from("Category")
       .insert({
         name: name.trim(),
+        handle: handle.trim().toLowerCase(),
         type: type.trim(),
       })
       .select()

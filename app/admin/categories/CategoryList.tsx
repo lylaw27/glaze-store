@@ -5,6 +5,7 @@ import { useState } from "react";
 interface Category {
   id: string;
   name: string;
+  handle: string;
   type: string;
   createdAt: string;
   updatedAt: string;
@@ -14,13 +15,14 @@ interface Category {
 }
 
 interface CategoryFormProps {
-  onSubmit: (data: { name: string; type: string }) => Promise<void>;
+  onSubmit: (data: { name: string; handle: string; type: string }) => Promise<void>;
   initialData?: Category;
   onCancel: () => void;
 }
 
 function CategoryForm({ onSubmit, initialData, onCancel }: CategoryFormProps) {
   const [name, setName] = useState(initialData?.name || "");
+  const [handle, setHandle] = useState(initialData?.handle || "");
   const [type, setType] = useState(initialData?.type || "");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
@@ -31,9 +33,10 @@ function CategoryForm({ onSubmit, initialData, onCancel }: CategoryFormProps) {
     setIsLoading(true);
 
     try {
-      await onSubmit({ name, type });
+      await onSubmit({ name, handle, type });
       if (!initialData) {
         setName("");
+        setHandle("");
         setType("");
       }
     } catch (err: any) {
@@ -63,6 +66,23 @@ function CategoryForm({ onSubmit, initialData, onCancel }: CategoryFormProps) {
           placeholder="e.g., Electronics, Christmas"
           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
         />
+      </div>
+      <div>
+        <label htmlFor="handle" className="block text-sm font-medium text-gray-700 mb-1">
+          Handle (URL Path) *
+        </label>
+        <input
+          type="text"
+          id="handle"
+          value={handle}
+          onChange={(e) => setHandle(e.target.value)}
+          required
+          placeholder="e.g., electronics, christmas"
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        />
+        <p className="text-xs text-gray-500 mt-1">
+          Used in URLs for filtering products (use lowercase, no spaces)
+        </p>
       </div>
       <div>
         <label htmlFor="type" className="block text-sm font-medium text-gray-700 mb-1">

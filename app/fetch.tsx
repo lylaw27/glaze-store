@@ -18,7 +18,10 @@ const getBaseUrl = () => {
 export async function getProducts(options?: {
   limit?: number;
   search?: string;
-  category?: string;
+  categories?: string[];
+  sort?: string;
+  lowPrice?: number;
+  highPrice?: number;
 }) {
   const params = new URLSearchParams();
   
@@ -28,8 +31,19 @@ export async function getProducts(options?: {
   if (options?.search) {
     params.append("search", options.search);
   }
-  if (options?.category) {
-    params.append("category", options.category);
+  if (options?.categories && options.categories.length > 0) {
+    options.categories.forEach(cat => {
+      params.append("category", cat);
+    });
+  }
+  if (options?.sort) {
+    params.append("sort", options.sort);
+  }
+  if (options?.lowPrice !== undefined) {
+    params.append("lowPrice", options.lowPrice.toString());
+  }
+  if (options?.highPrice !== undefined) {
+    params.append("highPrice", options.highPrice.toString());
   }
 
   const queryString = params.toString();
@@ -63,14 +77,14 @@ export async function getCategories() {
   const categories = await response.json();
   
   // Group categories by type
-  const groupedCategories: Record<string, Array<{ id: string; name: string }>> = {};
+  const groupedCategories: Record<string, Array<{ handle: string; name: string }>> = {};
   
-  categories.forEach((category: { id: string; name: string; type: string }) => {
+  categories.forEach((category: { id: string; name: string; handle: string; type: string }) => {
     if (!groupedCategories[category.type]) {
       groupedCategories[category.type] = [];
     }
     groupedCategories[category.type].push({
-      id: category.id,
+      handle: category.handle,
       name: category.name,
     });
   });

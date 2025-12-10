@@ -24,10 +24,10 @@ export async function GET(
       return NextResponse.json({ error: "Product not found" }, { status: 404 });
     }
 
-    // Format categories as array of names for backwards compatibility
+    // Format categories as array of handles for filtering
     const productWithFormattedCategories = {
       ...product,
-      categories: product.categories.map((pc: any) => pc.category.name),
+      categories: product.categories.map((pc: any) => pc.category.handle),
     };
 
     return NextResponse.json(productWithFormattedCategories);

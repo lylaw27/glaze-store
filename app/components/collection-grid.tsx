@@ -2,7 +2,7 @@
 
 import Image from "next/image"
 import Link from "next/link"
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import {
   Sheet,
@@ -30,12 +30,8 @@ import { useRouter, useSearchParams } from "next/navigation"
 
 import { ProductWithParsedFields } from "@/types/product"
 
-interface ProductShowcaseProps {
-  products: ProductWithParsedFields[];
-}
-
 interface CategoriesList {
-  [type: string]: Array<{ id: string; name: string }>;
+  [type: string]: Array<{ handle: string; name: string }>;
 }
 
 export default function CollectionGrid(
@@ -47,24 +43,39 @@ export default function CollectionGrid(
     pathname}:
   {
     categoriesList: CategoriesList,
-    allProducts: ProductShowcaseProps,
+    allProducts: ProductWithParsedFields[],
     pageCount: number, 
     page: number
     pathname:string
   }) {
   const [sheetOpen, setSheetOpen] = useState(false)
   const [selectedCats, setSelectedCats] = useState<string[]>([])
-  const [priceRange, setPriceRange] = useState<[number, number]>([0, 2000])
+  const [priceRange, setPriceRange] = useState<[number, number]>([0, 300])
   const [sort, setSort] = useState<"featured" | "price-asc" | "price-desc">("featured")
-  const queries = useSearchParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const didMount = useRef(false);
+  const sectionRef = useRef<HTMLElement>(null);
 
-  const toggleCat = (id: string) => {
-    setSelectedCats((prev) => (prev.includes(id) ? prev.filter((t) => t !== id) : [...prev, id]))
+  // Helper to build URL with page number while preserving other params
+  const buildPageUrl = (pageNum: number) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('page', pageNum.toString());
+    return `${pathname}?${params.toString()}`;
+  };
+
+  // Scroll to top of section when page changes
+  useEffect(() => {
+    if (sectionRef.current) {
+      sectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [page]);
+
+  const toggleCat = (handle: string) => {
+    setSelectedCats((prev) => (prev.includes(handle) ? prev.filter((t) => t !== handle) : [...prev, handle]))
   }
 
-  const applyFilter = () => {
+  const applyFilter = useCallback(() => {
       let queryString = "?"
 
       //Category query
@@ -78,12 +89,13 @@ export default function CollectionGrid(
       }
 
       // Price Range Query
-      if(!(priceRange[0] === 0 && priceRange[1] === 2000)){
+      if(!(priceRange[0] === 0 && priceRange[1] === 300)){
         queryString += "lowPrice=" + priceRange[0] + "&" + "highPrice=" + priceRange[1]  + "&";
       }
 
       router.push(pathname + queryString, { scroll: false })
-  }
+      router.refresh()
+  }, [selectedCats, sort, priceRange, pathname, router])
 
   useEffect(()=>{
     if(didMount.current){
@@ -92,13 +104,13 @@ export default function CollectionGrid(
     else{
       didMount.current = true;
     }
-  },[sort])
+  },[sort, applyFilter])
 
   const currency = (n: number) =>
     new Intl.NumberFormat("zh-HK", { style: "currency", currency: "HKD", minimumFractionDigits: 2 }).format(n)
 
   return (
-    <section className="px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto py-10">
+    <section ref={sectionRef} className="px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto py-10">
       {/* Breadcrumbs */}
       <div className="mb-4">
         <Breadcrumb>
@@ -120,7 +132,7 @@ export default function CollectionGrid(
       <div className="flex items-center justify-between gap-3 mb-6">
         <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
           <SheetTrigger asChild>
-            <Button variant="outline" className="gap-2 bg-transparent">
+            <Button variant="outline" className="bg-transparent">
               <SlidersHorizontal className="h-4 w-4" />
               篩選條件
             </Button>
@@ -130,18 +142,18 @@ export default function CollectionGrid(
               <SheetTitle>篩選條件</SheetTitle>
             </SheetHeader>
 
-            <div className="mt-6 space-y-8">
+            <div className="mt-6 space-y-8 px-6">
               {/* Categories */}
               {Object.entries(categoriesList).map(([type, categories]) => (
                 <div key={type}>
                   <div className="mb-3 text-sm font-medium">{type}</div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {categories.map(({ id, name }) => (
+                    {categories.map(({ handle, name }) => (
                       <label
-                        key={id}
+                        key={handle}
                         className="flex items-center gap-3 rounded-md border p-3 hover:bg-gray-50 cursor-pointer"
                       >
-                        <Checkbox checked={selectedCats.includes(id)} onCheckedChange={() => toggleCat(id)} />
+                        <Checkbox checked={selectedCats.includes(handle)} onCheckedChange={() => toggleCat(handle)} />
                         <span className="text-sm">{name}</span>
                       </label>
                     ))}
@@ -156,8 +168,8 @@ export default function CollectionGrid(
                     value={priceRange}
                     onValueChange={(v) => setPriceRange([v[0] as number, v[1] as number])}
                     min={0}
-                    max={2000}
-                    step={50}
+                    max={300}
+                    step={20}
                     minStepsBetweenThumbs={1}
                   />
                   <div className="mt-3 flex items-center justify-between text-sm text-gray-700">
@@ -169,7 +181,7 @@ export default function CollectionGrid(
             </div>
 
             <SheetFooter className="mt-8 gap-3">
-              <Button variant="ghost" onClick={() => (setSelectedCats([]), setPriceRange([0, 2000]), setSort("featured"), router.push(pathname, { scroll: false }))}>
+              <Button variant="ghost" onClick={() => (setSelectedCats([]), setPriceRange([0, 300]), setSort("featured"), router.push(pathname, { scroll: false }))}>
                 重設
               </Button>
               <SheetClose asChild>
@@ -204,7 +216,7 @@ export default function CollectionGrid(
 
       {/* Grid */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
-        {allProducts.map((p) => (
+        {allProducts.map((p: ProductWithParsedFields) => (
           <Link
             key={p.id}
             href={"/products/"+ p.id}
@@ -237,7 +249,7 @@ export default function CollectionGrid(
           asChild
           className={page === 1 ? "hidden" : ""}
         >
-          <Link href={{ pathname: pathname, query: { page: page - 1 }}} scroll={false}>
+          <Link href={buildPageUrl(page - 1)} scroll={false}>
             上一頁
           </Link>
         </Button>
@@ -266,7 +278,7 @@ export default function CollectionGrid(
               className="min-w-9"
               asChild
             >
-              <Link href={{ pathname: pathname, query: { page: n }}} scroll={false}>
+              <Link href={buildPageUrl(n)} scroll={false}>
                 {n}
               </Link>
             </Button>
@@ -279,7 +291,7 @@ export default function CollectionGrid(
           aria-label="下一頁"
           asChild
         >
-          <Link href={{ pathname: pathname, query: { page: page + 1 }}} scroll={false}>
+          <Link href={buildPageUrl(page + 1)} scroll={false}>
             下一頁
           </Link>
         </Button>

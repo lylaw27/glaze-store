@@ -3,6 +3,7 @@ import { revalidatePath } from "next/cache";
 import { uploadProductImage, deleteProductImages } from "@/lib/supabase";
 import ProductList from "./ProductList";
 import ProductForm from "./ProductForm";
+import { randomUUID } from "crypto";
 
 async function getProducts() {
   const { data: products, error } = await supabaseAdmin
@@ -68,6 +69,7 @@ export default async function ProductsPage() {
     // Create product-category relationships
     if (categoryIds.length > 0) {
       const productCategories = categoryIds.map((categoryId: string) => ({
+        id: randomUUID(),
         productId: product.id,
         categoryId,
       }));
@@ -146,6 +148,7 @@ export default async function ProductsPage() {
     // Create new category relationships
     if (categoryIds.length > 0) {
       const productCategories = categoryIds.map((categoryId: string) => ({
+        id: randomUUID(),
         productId: id,
         categoryId,
       }));
