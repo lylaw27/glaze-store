@@ -15,6 +15,24 @@ interface ProductCategory {
   category: Category;
 }
 
+interface VariantOption {
+  name: string;
+  values: string[];
+}
+
+interface ProductVariant {
+  id: string;
+  options: VariantOption[];
+}
+
+interface ProductAddOn {
+  id: string;
+  addOnProduct: {
+    id: string;
+    name: string;
+  };
+}
+
 interface Product {
   id: string;
   name: string;
@@ -22,8 +40,11 @@ interface Product {
   description: string | null;
   price: number;
   stock: number;
+  status: string;
   images: string; // JSON array of image URLs
   categories: ProductCategory[];
+  variants?: ProductVariant[];
+  addOns?: ProductAddOn[];
   createdAt: Date;
 }
 
@@ -68,10 +89,16 @@ export default function ProductList({
               Product
             </th>
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Status
+            </th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
               Price
             </th>
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
               Stock
+            </th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Features
             </th>
             <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
               Actions
@@ -82,7 +109,7 @@ export default function ProductList({
           {products.map((product) => (
             <tr key={product.id}>
               {editingId === product.id ? (
-                <td colSpan={4} className="px-6 py-4">
+                <td colSpan={6} className="px-6 py-4">
                   <ProductForm
                     action={updateAction}
                     initialData={product}
@@ -152,6 +179,17 @@ export default function ProductList({
                       </div>
                     </div>
                   </td>
+                  <td className="px-6 py-4">
+                    <span
+                      className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
+                        product.status === "active"
+                          ? "bg-green-100 text-green-800"
+                          : "bg-gray-100 text-gray-800"
+                      }`}
+                    >
+                      {product.status === "active" ? "Active" : "Hidden"}
+                    </span>
+                  </td>
                   <td className="px-6 py-4 text-gray-900">
                     ${product.price.toFixed(2)}
                   </td>
@@ -167,6 +205,26 @@ export default function ProductList({
                     >
                       {product.stock} in stock
                     </span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex flex-col gap-1">
+                      {product.variants && product.variants.length > 0 && (
+                        <span className="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded bg-purple-100 text-purple-800">
+                          <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+                          </svg>
+                          {product.variants[0].options.length} variant{product.variants[0].options.length !== 1 ? 's' : ''}
+                        </span>
+                      )}
+                      {product.addOns && product.addOns.length > 0 && (
+                        <span className="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded bg-orange-100 text-orange-800">
+                          <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                          </svg>
+                          {product.addOns.length} add-on{product.addOns.length !== 1 ? 's' : ''}
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex justify-end gap-2">

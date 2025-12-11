@@ -5,7 +5,7 @@ import HeroImageSection from "../components/hero-image-section";
 import { hero4 } from "../jsonFiles/heroContent";
 import { getProducts, getCategories } from "../fetch";
 
-export default async function Home ({searchParams}:{searchParams: Promise<{ [key: string]: string | string[]}>}) {
+export default async function ProductCatalog ({searchParams}:{searchParams: Promise<{ [key: string]: string | string[]}>}) {
 
     const resolvedSearchParams = await searchParams
     const pageNumber = parseInt(resolvedSearchParams.page as string) || 1

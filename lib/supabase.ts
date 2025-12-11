@@ -42,6 +42,7 @@ export type Database = {
           price: number;
           images: string;
           stock: number;
+          status: string;
           createdAt: string;
           updatedAt: string;
         };
@@ -53,6 +54,7 @@ export type Database = {
           price: number;
           images?: string;
           stock?: number;
+          status?: string;
           createdAt?: string;
           updatedAt?: string;
         };
@@ -64,6 +66,7 @@ export type Database = {
           price?: number;
           images?: string;
           stock?: number;
+          status?: string;
           createdAt?: string;
           updatedAt?: string;
         };
@@ -144,6 +147,49 @@ export type Database = {
           price?: number;
           productId?: string;
           orderId?: string;
+        };
+      };
+      ProductVariant: {
+        Row: {
+          id: string;
+          productId: string;
+          options: string;
+          createdAt: string;
+          updatedAt: string;
+        };
+        Insert: {
+          id?: string;
+          productId: string;
+          options: string;
+          createdAt?: string;
+          updatedAt?: string;
+        };
+        Update: {
+          id?: string;
+          productId?: string;
+          options?: string;
+          createdAt?: string;
+          updatedAt?: string;
+        };
+      };
+      ProductAddOn: {
+        Row: {
+          id: string;
+          mainProductId: string;
+          addOnProductId: string;
+          createdAt: string;
+        };
+        Insert: {
+          id?: string;
+          mainProductId: string;
+          addOnProductId: string;
+          createdAt?: string;
+        };
+        Update: {
+          id?: string;
+          mainProductId?: string;
+          addOnProductId?: string;
+          createdAt?: string;
         };
       };
     };

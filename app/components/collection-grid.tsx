@@ -219,7 +219,7 @@ export default function CollectionGrid(
         {allProducts.map((p: ProductWithParsedFields) => (
           <Link
             key={p.id}
-            href={"/products/"+ p.id}
+            href={"/products/"+ p.handle}
             className="group rounded-lg overflow-hidden bg-white ring-1 ring-gray-200 hover:ring-gray-300 transition"
           >
             <div className="relative aspect-square bg-gray-50">

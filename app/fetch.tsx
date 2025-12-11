@@ -91,3 +91,20 @@ export async function getCategories() {
 
   return groupedCategories;
 }
+
+//Get single product by handle
+export async function getProductByHandle(handle: string) {
+  const baseUrl = getBaseUrl();
+  const url = `${baseUrl}/api/products?handle=${handle}`;
+
+  const response = await fetch(url, {
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to fetch product");
+  }
+
+  const products = await response.json();
+  return products[0] || null;
+}

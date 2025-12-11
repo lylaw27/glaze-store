@@ -20,7 +20,8 @@ export async function POST(request: Request) {
     const { data: products, error: productsError } = await supabaseAdmin
       .from("Product")
       .select("*")
-      .in("id", productIds);
+      .in("id", productIds)
+      .eq("status", "active"); // Only validate active products
 
     if (productsError) {
       throw productsError;
@@ -34,7 +35,7 @@ export async function POST(request: Request) {
       const product = products?.find((p) => p.id === item.productId);
 
       if (!product) {
-        errors.push(`Product not found: ${item.productId}`);
+        errors.push(`Product not available: ${item.productId}`);
         continue;
       }
 

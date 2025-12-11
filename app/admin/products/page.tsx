@@ -12,6 +12,11 @@ async function getProducts() {
       *,
       categories:ProductCategory(
         category:Category(*)
+      ),
+      variants:ProductVariant(*),
+      addOns:ProductAddOn!ProductAddOn_mainProductId_fkey(
+        id,
+        addOnProduct:Product!ProductAddOn_addOnProductId_fkey(*)
       )
     `)
     .order("createdAt", { ascending: false });
@@ -33,8 +38,11 @@ export default async function ProductsPage() {
     const description = formData.get("description") as string;
     const price = parseFloat(formData.get("price") as string);
     const stock = parseInt(formData.get("stock") as string);
+    const status = formData.get("status") as string || "active";
     const newImageCount = parseInt(formData.get("newImageCount") as string) || 0;
     const categoryIds = JSON.parse(formData.get("categoryIds") as string || "[]");
+    const variantOptions = formData.get("variantOptions") as string;
+    const addOnProductIds = JSON.parse(formData.get("addOnProductIds") as string || "[]");
 
     const imageUrls: string[] = [];
 
@@ -57,6 +65,7 @@ export default async function ProductsPage() {
         description,
         price,
         stock,
+        status,
         images: JSON.stringify(imageUrls),
       })
       .select()
@@ -83,6 +92,38 @@ export default async function ProductsPage() {
       }
     }
 
+    // Create product variants if provided
+    if (variantOptions && variantOptions !== "[]") {
+      const { error: variantError } = await supabaseAdmin
+        .from("ProductVariant")
+        .insert({
+          id: randomUUID(),
+          productId: product.id,
+          options: variantOptions,
+        });
+
+      if (variantError) {
+        throw variantError;
+      }
+    }
+
+    // Create product add-on relationships
+    if (addOnProductIds.length > 0) {
+      const productAddOns = addOnProductIds.map((addOnProductId: string) => ({
+        id: randomUUID(),
+        mainProductId: product.id,
+        addOnProductId,
+      }));
+
+      const { error: addOnError } = await supabaseAdmin
+        .from("ProductAddOn")
+        .insert(productAddOns);
+
+      if (addOnError) {
+        throw addOnError;
+      }
+    }
+
     revalidatePath("/admin/products");
   }
 
@@ -94,10 +135,13 @@ export default async function ProductsPage() {
     const description = formData.get("description") as string;
     const price = parseFloat(formData.get("price") as string);
     const stock = parseInt(formData.get("stock") as string);
+    const status = formData.get("status") as string || "active";
     const newImageCount = parseInt(formData.get("newImageCount") as string) || 0;
     const existingImages = JSON.parse(formData.get("existingImages") as string || "[]");
     const removedImages = JSON.parse(formData.get("removedImages") as string || "[]");
     const categoryIds = JSON.parse(formData.get("categoryIds") as string || "[]");
+    const variantOptions = formData.get("variantOptions") as string;
+    const addOnProductIds = JSON.parse(formData.get("addOnProductIds") as string || "[]");
 
     // Delete removed images from storage
     if (removedImages.length > 0) {
@@ -127,6 +171,7 @@ export default async function ProductsPage() {
         description,
         price,
         stock,
+        status,
         images: JSON.stringify(allImages),
       })
       .eq("id", id);
@@ -159,6 +204,78 @@ export default async function ProductsPage() {
 
       if (categoryError) {
         throw categoryError;
+      }
+    }
+
+    // Update or create product variants
+    const { data: existingVariant } = await supabaseAdmin
+      .from("ProductVariant")
+      .select("id")
+      .eq("productId", id)
+      .single();
+
+    if (variantOptions && variantOptions !== "[]") {
+      if (existingVariant) {
+        // Update existing variant
+        const { error: variantError } = await supabaseAdmin
+          .from("ProductVariant")
+          .update({ options: variantOptions })
+          .eq("productId", id);
+
+        if (variantError) {
+          throw variantError;
+        }
+      } else {
+        // Create new variant
+        const { error: variantError } = await supabaseAdmin
+          .from("ProductVariant")
+          .insert({
+            id: randomUUID(),
+            productId: id,
+            options: variantOptions,
+          });
+
+        if (variantError) {
+          throw variantError;
+        }
+      }
+    } else if (existingVariant) {
+      // Delete variant if options are empty
+      const { error: deleteVariantError } = await supabaseAdmin
+        .from("ProductVariant")
+        .delete()
+        .eq("productId", id);
+
+      if (deleteVariantError) {
+        throw deleteVariantError;
+      }
+    }
+
+    // Update product add-ons
+    // Delete all existing add-on relationships
+    const { error: deleteAddOnsError } = await supabaseAdmin
+      .from("ProductAddOn")
+      .delete()
+      .eq("mainProductId", id);
+
+    if (deleteAddOnsError) {
+      throw deleteAddOnsError;
+    }
+
+    // Create new add-on relationships
+    if (addOnProductIds.length > 0) {
+      const productAddOns = addOnProductIds.map((addOnProductId: string) => ({
+        id: randomUUID(),
+        mainProductId: id,
+        addOnProductId,
+      }));
+
+      const { error: addOnError } = await supabaseAdmin
+        .from("ProductAddOn")
+        .insert(productAddOns);
+
+      if (addOnError) {
+        throw addOnError;
       }
     }
 

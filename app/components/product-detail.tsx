@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
-import { Button } from "@/components/ui/button"
+
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -13,11 +13,9 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb"
 import { Plus, Minus, Search, Globe, X, Star } from "lucide-react"
-import { StoreProduct } from "@medusajs/types"
 import AddToCartButton from "./clientComponents/addToCartProduct"
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@lib/components/ui/accordion"
-import { Checkbox } from "@lib/components/ui/checkbox"
-import { StoreProductAddon } from "../products/[handle]/page"
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
+import { Checkbox } from "@/components/ui/checkbox"
 
 const FAQ_DATA = [
   {
@@ -47,13 +45,9 @@ const FAQ_DATA = [
   },
 ]
 
-export default function product({ product }: { product: StoreProductAddon }) {
+export default function ProductDetail({ product }: { product: any }) {
   const [selectedImage, setSelectedImage] = useState(0)
-  const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>(
-    product.variants && product.options && product.options[0].title === "Default option" ? 
-    {[product.options[0].id!]: product.options[0].values[0].id!} : 
-    {}
-  )
+  const [selectedVariantValues, setSelectedVariantValues] = useState<Record<string, string>>({})
   const [quantity, setQuantity] = useState(1)
   const [isZoomed, setIsZoomed] = useState(false)
   const [selectedAddons, setSelectedAddons] = useState<string[]>([])
@@ -72,38 +66,10 @@ export default function product({ product }: { product: StoreProductAddon }) {
   const currency = (n: number) =>
     new Intl.NumberFormat("zh-HK", { style: "currency", currency: "HKD", minimumFractionDigits: 2 }).format(n)
 
-  const handleBuyNow = () => {
-    // if (!selectedSize) {
-    //   alert("請選擇尺寸")
-    //   return
-    // }
-    // Buy now logic here
-    // console.log("Buy now:", { product: product.title, size: selectedSize, quantity })
-  }
 
   const toggleAddon = (addonId: string) => {
     setSelectedAddons((prev) => (prev.includes(addonId) ? prev.filter((id) => id !== addonId) : [...prev, addonId]))
   }
-
-  const selectedVariant = useMemo(() => {
-    if (
-      !product?.variants ||
-      !product.options || 
-      Object.keys(selectedOptions).length !== product.options?.length
-    ) {
-      return
-    }
-
-    const variant = product.variants.find((variant) => variant.options?.every(
-      (optionValue) => optionValue.id === selectedOptions[optionValue.option_id!]
-    ))
-
-    console.log(selectedOptions)
-
-    return variant
-    }, [selectedOptions, product])
-
-
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
@@ -119,12 +85,12 @@ export default function product({ product }: { product: StoreProductAddon }) {
             <BreadcrumbSeparator />
             <BreadcrumbItem>
               <BreadcrumbLink asChild>
-                <Link href={`/collections/${product.collection.handle}`}>{product.collection.title}</Link>
+                <Link href="/products">產品</Link>
               </BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator />
             <BreadcrumbItem>
-              <BreadcrumbPage>{product.title}</BreadcrumbPage>
+              <BreadcrumbPage>{product.name}</BreadcrumbPage>
             </BreadcrumbItem>
           </BreadcrumbList>
         </Breadcrumb>
@@ -136,8 +102,8 @@ export default function product({ product }: { product: StoreProductAddon }) {
           {/* Main Image */}
           <div className="relative aspect-square bg-gray-50 rounded-lg overflow-hidden">
             <Image
-              src={product.images[selectedImage].url || "/placeholder.svg?height=600&width=600&query=product%20image"}
-              alt={product.title}
+              src={product.images[selectedImage] || "/placeholder.svg?height=600&width=600&query=product%20image"}
+              alt={product.name}
               fill
               className="object-cover cursor-zoom-in"
               onClick={() => setIsZoomed(true)}
@@ -154,7 +120,7 @@ export default function product({ product }: { product: StoreProductAddon }) {
 
           {/* Thumbnail Images */}
           <div className="grid grid-cols-4 gap-2">
-            {product.images.map((img, idx) => (
+            {product.images.map((img: string, idx: number) => (
               <button
                 key={idx}
                 onClick={() => setSelectedImage(idx)}
@@ -163,8 +129,8 @@ export default function product({ product }: { product: StoreProductAddon }) {
                 }`}
               >
                 <Image
-                  src={img.url || "/placeholder.svg?height=150&width=150&query=product%20thumbnail"}
-                  alt={`${product.title} 圖片 ${idx + 1}`}
+                  src={img || "/placeholder.svg?height=150&width=150&query=product%20thumbnail"}
+                  alt={`${product.name} 圖片 ${idx + 1}`}
                   fill
                   className="object-cover"
                   sizes="(max-width: 768px) 25vw, 150px"
@@ -177,8 +143,8 @@ export default function product({ product }: { product: StoreProductAddon }) {
         {/* Product Info */}
         <div className="space-y-6">
           <div>
-            <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 mb-4">{product.title}</h1>
-            <div className="text-2xl font-semibold text-gray-900 mb-2">{currency(product.variants[0].calculated_price?.calculated_amount)}</div>
+            <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 mb-4">{product.name}</h1>
+            <div className="text-2xl font-semibold text-gray-900 mb-2">{currency(product.price)}</div>
             <p className="text-sm text-gray-600">結賬時計算運費。</p>
           </div>
 
@@ -188,41 +154,32 @@ export default function product({ product }: { product: StoreProductAddon }) {
             <span>全球運送</span>
           </div>
 
-          {/* Size Selector */}
-          {product.options[0].title != "Default option" && product.options?.map(option=>
-          <div key={option.id}>
+          {/* Variant Selector */}
+          {product.variants?.options?.map((option: any, optionIdx: number) => (
+          <div key={optionIdx}>
             <div className="mb-3">
-              <span className="text-sm font-medium text-gray-900">{option.title}</span>
+              <span className="text-sm font-medium text-gray-900">{option.name}</span>
             </div>
             <div className="grid grid-cols-4 gap-2">
-              {option.values?.map((optionValue) => (
+              {option.values?.map((value: string, valueIdx: number) => (
                 <button
-                    key={optionValue.id}
-                    onClick={() => setSelectedOptions((prev) => {
-                        return {
+                    key={valueIdx}
+                    onClick={() => setSelectedVariantValues((prev) => ({
                         ...prev,
-                        [option.id!]: optionValue.id!,
-                    }})}
-                    // disabled={variant.manage_inventory && variant.inventory_quantity <= 0}
+                        [option.name]: value,
+                    }))}
                     className={`relative h-12 border rounded-md text-sm font-medium transition-colors ${
-                    // variant.manage_inventory && variant.inventory_quantity <= 0
-                    //   ? "border-gray-200 text-gray-400 cursor-not-allowed" :
-                    selectedOptions[option.id] === optionValue.id
+                    selectedVariantValues[option.name] === value
                         ? "border-gray-900 bg-gray-900 text-white"
                         : "border-gray-300 text-gray-900 hover:border-gray-400"
                   }`}
                 >
-                  {optionValue.value}
-                  {/* {variant.inventory_quantity <= 0 && ( */}
-                    {/* <div className="absolute inset-0 flex items-center justify-center">
-                      <X className="h-6 w-6 text-gray-400" />
-                    </div> */}
-                  {/* )} */}
+                  {value}
                 </button>
               ))}
             </div>
           </div>
-          )}
+          ))}
 
           {/* Quantity */}
           <div>
@@ -248,11 +205,14 @@ export default function product({ product }: { product: StoreProductAddon }) {
           {/* Add to Cart Buttons */}
           <div className="space-y-3">
             <AddToCartButton 
-                productIds={[selectedVariant?.id, ...selectedAddons]}
+                productId={product.id}
+                name={product.name}
+                price={product.price}
+                image={product.images[0] || null}
                 text={
-                    Object.keys(selectedOptions).length != product.options?.length ? 
+                    product.variants?.options && Object.keys(selectedVariantValues).length !== product.variants.options.length ? 
                     "請選擇款色" :
-                    selectedVariant && (!selectedVariant?.manage_inventory || selectedVariant?.inventory_quantity > 0) ? 
+                    product.stock > 0 ? 
                     "加入購物車" : "已售罄"
                 }
                 quantity={quantity}
@@ -270,21 +230,24 @@ export default function product({ product }: { product: StoreProductAddon }) {
           </div>
 
           {/* Product Add-ons */}
-      {product.addon && product.addon.length > 0 && (
-        <div className="mt-16 space-y-4">
-          {product.addon.map((addon) => (
-            <div key={addon.id} className={`bg-gray-50 rounded-lg p-4 border-1 ${selectedAddons.includes(addon.id) ? "border-gray-500" : "border-gray-300"}`}>
+      {product.addOns && product.addOns.length > 0 && (
+        <div className="mt-8 space-y-4">
+          <h3 className="text-sm font-medium text-gray-900">推薦配件</h3>
+          {product.addOns.map((addOnItem: any) => {
+            const addon = addOnItem.addOnProduct;
+            return (
+            <div key={addon.id} className={`bg-gray-50 rounded-lg p-4 border ${selectedAddons.includes(addon.id) ? "border-gray-500" : "border-gray-300"}`}>
               <div className="flex gap-4 items-center">
                 <Checkbox
                   id={addon.id}
-                  checked={selectedAddons.includes(addon.variants[0].id)}
-                  onCheckedChange={() => toggleAddon(addon.variants[0].id)}
+                  checked={selectedAddons.includes(addon.id)}
+                  onCheckedChange={() => toggleAddon(addon.id)}
                   className="mt-1"
                 />
                 <div className="flex-shrink-0">
                   <Image
-                    src={addon.images[0].url || "/placeholder.svg?height=80&width=80&query=addon%20image"}
-                    alt={addon.title}
+                    src={addon.images[0] || "/placeholder.svg?height=80&width=80&query=addon%20image"}
+                    alt={addon.name}
                     width={80}
                     height={80}
                     className="rounded-md object-cover"
@@ -295,17 +258,17 @@ export default function product({ product }: { product: StoreProductAddon }) {
                     <div>
                       <div className="flex items-center gap-2">
                         <label htmlFor={addon.id} className="text-base font-medium text-gray-900 cursor-pointer">
-                          {addon.title}
+                          {addon.name}
                         </label>
                       </div>
-                      <div className="text-lg font-semibold text-gray-900 mt-1">{currency(addon.variants[0].calculated_price?.calculated_amount)}</div>
-                      <p className="text-sm text-gray-600 mt-1">{addon.description}</p>
+                      <div className="text-lg font-semibold text-gray-900 mt-1">{currency(addon.price)}</div>
+                      {addon.description && <p className="text-sm text-gray-600 mt-1">{addon.description}</p>}
                     </div>
                   </div>
                 </div>
               </div>
             </div>
-          ))}
+          )})}
         </div>
       )}
 
@@ -381,8 +344,8 @@ export default function product({ product }: { product: StoreProductAddon }) {
               onClick={(e) => e.stopPropagation()}
             >
               <Image
-                src={product.images[selectedImage].url || "/placeholder.svg?height=800&width=800&query=product%20image"}
-                alt={product.title}
+                src={product.images[selectedImage] || "/placeholder.svg?height=800&width=800&query=product%20image"}
+                alt={product.name}
                 fill
                 className="object-contain p-4"
                 sizes="90vw"

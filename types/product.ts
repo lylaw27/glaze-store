@@ -1,3 +1,30 @@
+// Product status type
+export type ProductStatus = 'active' | 'hidden';
+
+// Variant option structure
+export interface VariantOption {
+  name: string;
+  values: string[];
+}
+
+// Product variant
+export interface ProductVariant {
+  id: string;
+  productId: string;
+  options: VariantOption[]; // Parsed from JSON
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// Product add-on relationship
+export interface ProductAddOn {
+  id: string;
+  mainProductId: string;
+  addOnProductId: string;
+  addOnProduct?: Product; // Optional populated add-on product
+  createdAt: Date;
+}
+
 // Product type matching the Prisma schema
 export interface Product {
   id: string;
@@ -8,6 +35,7 @@ export interface Product {
   images: string; // JSON stringified array of image URLs
   categories: string; // JSON stringified array of category strings
   stock: number;
+  status: ProductStatus;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -22,6 +50,9 @@ export interface ProductWithParsedFields {
   images: string[];
   categories: string[];
   stock: number;
+  status: ProductStatus;
+  variants?: ProductVariant;
+  addOns?: ProductAddOn[];
   createdAt: Date;
   updatedAt: Date;
 }
