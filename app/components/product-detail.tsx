@@ -216,6 +216,17 @@ export default function ProductDetail({ product }: { product: any }) {
                     "加入購物車" : "已售罄"
                 }
                 quantity={quantity}
+                variants={selectedVariantValues}
+                addOns={selectedAddons.map(addonId => {
+                    const addOnItem = product.addOns?.find((ao: any) => ao.addOnProduct.id === addonId);
+                    const addon = addOnItem?.addOnProduct;
+                    return addon ? {
+                        productId: addon.id,
+                        name: addon.name,
+                        price: addon.price,
+                        image: addon.images[0] || null,
+                    } : null;
+                }).filter(Boolean) as Array<{ productId: string; name: string; price: number; image: string; }>}
             />
             {/* <Button
               onClick={handleBuyNow}

@@ -7,6 +7,7 @@ export interface CartItem {
   price: number;
   quantity: number;
   image: string | null;
+  variants?: Record<string, string>; // e.g., { "Size": "M", "Color": "Red" }
 }
 
 export interface Cart {

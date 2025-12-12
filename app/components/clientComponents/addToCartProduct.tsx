@@ -11,6 +11,13 @@ interface AddToCartButtonProps {
     text: string;
     quantity: number;
     disabled?: boolean;
+    variants?: Record<string, string>;
+    addOns?: Array<{
+        productId: string;
+        name: string;
+        price: number;
+        image: string;
+    }>;
 }
 
 export default function AddToCartButton({ 
@@ -20,18 +27,34 @@ export default function AddToCartButton({
     image, 
     text, 
     quantity,
-    disabled = false 
+    disabled = false,
+    variants,
+    addOns = []
 }: AddToCartButtonProps) {
     const { addToCart, setCartOpen } = useCart();
 
     const handleAddToCart = () => {
+        // Add main product
         addToCart({
             productId,
             name,
             price,
             quantity,
             image,
+            variants,
         });
+        
+        // Add each add-on product
+        addOns.forEach(addon => {
+            addToCart({
+                productId: addon.productId,
+                name: addon.name,
+                price: addon.price,
+                quantity: 1, // Add-ons default to quantity 1
+                image: addon.image,
+            });
+        });
+        
         setCartOpen(true);
     }
 

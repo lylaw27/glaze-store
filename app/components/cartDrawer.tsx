@@ -62,6 +62,15 @@ export default function CartDrawer({ open, onOpenChange }: { open: boolean; onOp
 
                         <div className="flex flex-col gap-2">
                             <div className="text-sm font-medium text-gray-900">{item.name}</div>
+                            {item.variants && Object.keys(item.variants).length > 0 && (
+                                <div className="text-xs text-gray-500">
+                                    {Object.entries(item.variants).map(([key, value]) => (
+                                        <span key={key} className="mr-2">
+                                            {key}: {value}
+                                        </span>
+                                    ))}
+                                </div>
+                            )}
 
                         {/* Quantity stepper */}
                         <div>
@@ -125,7 +134,8 @@ export default function CartDrawer({ open, onOpenChange }: { open: boolean; onOp
                 <p className="text-sm text-gray-500">結賬時計算運費、稅金和折扣代碼。</p>
                     <Button
                         asChild
-                        className="w-full rounded-md bg-black text-white py-3 text-sm font-medium hover:bg-black/90">
+                        className="w-full rounded-md bg-black text-white py-3 text-sm font-medium hover:bg-black/90"
+                        onClick={() => onOpenChange(false)}>
                         <Link href="/checkout">
                             前往結帳
                         </Link>
