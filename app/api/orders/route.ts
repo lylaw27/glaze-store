@@ -1,23 +1,39 @@
 import { supabaseAdmin } from "@/lib/supabase";
 import { NextResponse } from "next/server";
 
-interface OrderItem {
+interface OrderItemInput {
   productId: string;
   quantity: number;
 }
 
-interface OrderPayload {
+interface CreateOrderRequest {
   customerName: string;
   customerEmail: string;
   customerAddress: string;
   paymentId?: string;
-  items: OrderItem[];
+  items: OrderItemInput[];
+}
+
+interface ProductQueryResult {
+  id: string;
+  name: string;
+  price: number;
+  stock: number;
+  images: string;
+  status: string;
+}
+
+interface OrderItemInsertData {
+  orderId: string;
+  productId: string;
+  quantity: number;
+  price: number;
 }
 
 // POST /api/orders - Create a new order (after payment confirmation)
 export async function POST(request: Request) {
   try {
-    const body: OrderPayload = await request.json();
+    const body: CreateOrderRequest = await request.json();
 
     const { customerName, customerEmail, customerAddress, paymentId, items } =
       body;
@@ -43,7 +59,7 @@ export async function POST(request: Request) {
     const productIds = items.map((item) => item.productId);
     const { data: products, error: productsError } = await supabaseAdmin
       .from("Product")
-      .select("*")
+      .select("id, name, price, stock, images, status")
       .in("id", productIds);
 
     if (productsError) {
@@ -52,7 +68,7 @@ export async function POST(request: Request) {
 
     // Validate all products exist and have sufficient stock
     for (const item of items) {
-      const product = products?.find((p) => p.id === item.productId);
+      const product = (products as ProductQueryResult[])?.find((p) => p.id === item.productId);
       if (!product) {
         return NextResponse.json(
           { error: `Product not found: ${item.productId}` },
@@ -69,13 +85,14 @@ export async function POST(request: Request) {
 
     // Calculate total amount
     const totalAmount = items.reduce((sum, item) => {
-      const product = products?.find((p) => p.id === item.productId)!;
+      const product = (products as ProductQueryResult[]).find((p) => p.id === item.productId)!;
       return sum + product.price * item.quantity;
     }, 0);
 
     // Create the order
     const { data: newOrder, error: orderError } = await supabaseAdmin
       .from("Order")
+      // @ts-expect-error - Supabase type generation issue
       .insert({
         customerName,
         customerEmail,
@@ -87,15 +104,17 @@ export async function POST(request: Request) {
       .select()
       .single();
 
-    if (orderError) {
-      throw orderError;
+    if (orderError || !newOrder) {
+      throw orderError || new Error("Failed to create order");
     }
 
+    const orderId = (newOrder as { id: string }).id;
+
     // Create order items
-    const orderItems = items.map((item) => {
-      const product = products?.find((p) => p.id === item.productId)!;
+    const orderItems: OrderItemInsertData[] = items.map((item) => {
+      const product = (products as ProductQueryResult[]).find((p) => p.id === item.productId)!;
       return {
-        orderId: newOrder.id,
+        orderId,
         productId: item.productId,
         quantity: item.quantity,
         price: product.price,
@@ -104,6 +123,7 @@ export async function POST(request: Request) {
 
     const { error: itemsError } = await supabaseAdmin
       .from("OrderItem")
+      // @ts-expect-error - Supabase type generation issue
       .insert(orderItems);
 
     if (itemsError) {
@@ -112,9 +132,10 @@ export async function POST(request: Request) {
 
     // Update stock for each product
     for (const item of items) {
-      const product = products?.find((p) => p.id === item.productId)!;
+      const product = (products as ProductQueryResult[]).find((p) => p.id === item.productId)!;
       const { error: stockError } = await supabaseAdmin
         .from("Product")
+        // @ts-expect-error - Supabase type generation issue
         .update({ stock: product.stock - item.quantity })
         .eq("id", item.productId);
 
@@ -133,7 +154,7 @@ export async function POST(request: Request) {
           product:Product(*)
         )
       `)
-      .eq("id", newOrder.id)
+      .eq("id", orderId)
       .single();
 
     if (fetchError) {

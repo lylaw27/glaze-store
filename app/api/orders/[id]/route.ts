@@ -1,10 +1,14 @@
 import { supabaseAdmin } from "@/lib/supabase";
 import { NextResponse } from "next/server";
 
+interface RouteParams {
+  params: Promise<{ id: string }>;
+}
+
 // GET /api/orders/[id] - Get a single order by ID (for order confirmation/tracking)
 export async function GET(
   request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: RouteParams
 ) {
   try {
     const { id } = await params;

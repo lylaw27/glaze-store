@@ -1,13 +1,33 @@
 import { supabaseAdmin } from "@/lib/supabase";
 import { NextResponse } from "next/server";
 
+interface CategoryUpdateData {
+  name: string;
+  handle: string;
+  type: string;
+}
+
+interface RouteParams {
+  params: Promise<{ id: string }>;
+}
+
+interface CategoryWithProducts {
+  id: string;
+  name: string;
+  handle: string;
+  type: string;
+  createdAt: string;
+  updatedAt: string;
+  products?: Array<{ count: number }>;
+}
+
 // DELETE category by ID
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: RouteParams
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
 
     // Check if category exists and count products
     const { data: category, error: fetchError } = await supabaseAdmin
@@ -27,7 +47,7 @@ export async function DELETE(
     }
 
     // Check if category is being used by any products
-    const productCount = category.products?.[0]?.count || 0;
+    const productCount = (category as CategoryWithProducts).products?.[0]?.count || 0;
     if (productCount > 0) {
       return NextResponse.json(
         { error: `Cannot delete category. It is used by ${productCount} product(s)` },
@@ -57,11 +77,11 @@ export async function DELETE(
 // PUT update category by ID
 export async function PUT(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: RouteParams
 ) {
   try {
-    const { id } = params;
-    const body = await request.json();
+    const { id } = await params;
+    const body: CategoryUpdateData = await request.json();
     const { name, handle, type } = body;
 
     if (!name || !handle || !type) {
@@ -73,6 +93,7 @@ export async function PUT(
 
     const { data: category, error } = await supabaseAdmin
       .from("Category")
+      // @ts-expect-error - Supabase type generation issue
       .update({
         name: name.trim(),
         handle: handle.trim().toLowerCase(),

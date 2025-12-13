@@ -1,6 +1,22 @@
 import { supabaseAdmin } from "@/lib/supabase";
 import { NextResponse } from "next/server";
-import { CategoryWithCount } from "@/types";
+import type { CategoryWithCount } from "@/types";
+
+interface CategoryInsertData {
+  name: string;
+  handle: string;
+  type: string;
+}
+
+interface CategoryQueryResult {
+  id: string;
+  name: string;
+  handle: string;
+  type: string;
+  createdAt: string;
+  updatedAt: string;
+  products?: Array<{ count: number }>;
+}
 
 // GET all categories
 export async function GET() {
@@ -18,8 +34,10 @@ export async function GET() {
     }
 
     // Format to match expected structure
-    const formattedCategories: CategoryWithCount[] = (categories || []).map((cat) => ({
+    const formattedCategories: CategoryWithCount[] = (categories || []).map((cat: CategoryQueryResult) => ({
       ...cat,
+      createdAt: new Date(cat.createdAt),
+      updatedAt: new Date(cat.updatedAt),
       _count: {
         products: cat.products?.length || 0,
       },
@@ -38,7 +56,7 @@ export async function GET() {
 // POST create new category
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
+    const body: CategoryInsertData = await request.json();
     const { name, handle, type } = body;
 
     if (!name || !handle || !type) {
@@ -50,6 +68,7 @@ export async function POST(request: Request) {
 
     const { data: category, error } = await supabaseAdmin
       .from("Category")
+      // @ts-expect-error - Supabase type generation issue
       .insert({
         name: name.trim(),
         handle: handle.trim().toLowerCase(),

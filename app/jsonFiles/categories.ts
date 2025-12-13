@@ -1,7 +1,7 @@
 export interface Category {
   id: number;
   title: string;
-  span: "single" | "double";
+  span: string;
   image: string;
   description?: string;
 }
