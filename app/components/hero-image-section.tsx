@@ -2,8 +2,9 @@ import type React from "react"
 
 import { Button } from "@/components/ui/button"
 import Image from "next/image"
+import { HeroSlide } from "@/types"
 
-export default function HeroImageSection({slide}) {
+export default function HeroImageSection({slide}: { slide: HeroSlide }) {
 
   return (
     <div className="relative min-h-screen bg-linear-to-br from-stone-100 to-stone-200 overflow-hidden touch-pan-y">

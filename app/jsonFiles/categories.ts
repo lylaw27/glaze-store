@@ -1,6 +1,12 @@
-import { Category } from "../interface/static";
+export interface Category {
+  id: number;
+  title: string;
+  span: "single" | "double";
+  image: string;
+  description?: string;
+}
 
-export const categories:Category[] = [
+export const categories = [
   {
     id: 1,
     title: "震麻七月鬼節適合佩戴的水晶，最強辟邪水晶！開運負能量！保平安",

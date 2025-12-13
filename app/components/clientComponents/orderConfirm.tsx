@@ -4,9 +4,6 @@ import Image from "next/image"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { CheckCircle, Package, Truck, CreditCard,OctagonX } from "lucide-react"
-import { Store } from "@medusajs/js-sdk"
-import { StoreOrderLineItem } from "@medusajs/types"
-import { OrderWithPayment } from "app/[countryCode]/(checkout)/fetch"
 
 type OrderItem = {
   id: string
@@ -117,7 +114,7 @@ const ORDERS: Record<string, OrderData> = {
   },
 }
 
-const variantParser = (item: StoreOrderLineItem) => {
+const variantParser = (item) => {
     return item.variant?.options && item.variant?.options.map((option=>
         option.value != "Default option value" ?
         <div key={option.value} className="text-xs font-medium text-gray-700">{option.option?.title + ": " +option.value}</div>:
@@ -125,7 +122,7 @@ const variantParser = (item: StoreOrderLineItem) => {
     ))
 }
 
-export default function OrderConfirmation({ orderObj }: { orderObj: OrderWithPayment }) {
+export default function OrderConfirmation({ orderObj }: { orderObj }) {
     const order = ORDERS["WO-2024-001"]
     if (!orderObj) {
         return (
@@ -244,7 +241,7 @@ export default function OrderConfirmation({ orderObj }: { orderObj: OrderWithPay
             <div className="space-y-6">
               {orderObj.items && orderObj.items.map((item) => (
                 <div key={`${item.id}-${item.title || ""}`} className="flex gap-4">
-                  <div className="relative h-20 w-20 flex-shrink-0 overflow-hidden rounded-md border border-gray-200">
+                  <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-md border border-gray-200">
                     <Image
                       src={item.product?.thumbnail || "/placeholder.svg?height=80&width=80&query=product"}
                       alt={item.product?.title || "Product Image"}

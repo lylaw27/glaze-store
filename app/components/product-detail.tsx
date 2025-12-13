@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
 
@@ -12,10 +12,11 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb"
-import { Plus, Minus, Search, Globe, X, Star } from "lucide-react"
+import { Plus, Minus, Search, Globe, X } from "lucide-react"
 import AddToCartButton from "./clientComponents/addToCartProduct"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { Checkbox } from "@/components/ui/checkbox"
+import { ProductWithRelations } from "@/types"
 
 const FAQ_DATA = [
   {
@@ -45,7 +46,7 @@ const FAQ_DATA = [
   },
 ]
 
-export default function ProductDetail({ product }: { product: any }) {
+export default function ProductDetail({ product }: { product: ProductWithRelations }) {
   const [selectedImage, setSelectedImage] = useState(0)
   const [selectedVariantValues, setSelectedVariantValues] = useState<Record<string, string>>({})
   const [quantity, setQuantity] = useState(1)
@@ -121,7 +122,7 @@ export default function ProductDetail({ product }: { product: any }) {
           {/* Thumbnail Images */}
           <div className="grid grid-cols-4 gap-2">
             {product.images.map((img: string, idx: number) => (
-              <button
+              <div
                 key={idx}
                 onClick={() => setSelectedImage(idx)}
                 className={`relative aspect-square bg-gray-50 rounded-md overflow-hidden ring-2 transition-colors ${
@@ -135,7 +136,7 @@ export default function ProductDetail({ product }: { product: any }) {
                   className="object-cover"
                   sizes="(max-width: 768px) 25vw, 150px"
                 />
-              </button>
+              </div>
             ))}
           </div>
         </div>
@@ -155,13 +156,13 @@ export default function ProductDetail({ product }: { product: any }) {
           </div>
 
           {/* Variant Selector */}
-          {product.variants?.options?.map((option: any, optionIdx: number) => (
+          {product.variants?.options?.map((option, optionIdx) => (
           <div key={optionIdx}>
             <div className="mb-3">
               <span className="text-sm font-medium text-gray-900">{option.name}</span>
             </div>
             <div className="grid grid-cols-4 gap-2">
-              {option.values?.map((value: string, valueIdx: number) => (
+              {option.values?.map((value, valueIdx) => (
                 <button
                     key={valueIdx}
                     onClick={() => setSelectedVariantValues((prev) => ({
@@ -208,7 +209,7 @@ export default function ProductDetail({ product }: { product: any }) {
                 productId={product.id}
                 name={product.name}
                 price={product.price}
-                image={product.images[0] || null}
+                image={product.images[0] || ""}
                 text={
                     product.variants?.options && Object.keys(selectedVariantValues).length !== product.variants.options.length ? 
                     "請選擇款色" :
@@ -218,13 +219,13 @@ export default function ProductDetail({ product }: { product: any }) {
                 quantity={quantity}
                 variants={selectedVariantValues}
                 addOns={selectedAddons.map(addonId => {
-                    const addOnItem = product.addOns?.find((ao: any) => ao.addOnProduct.id === addonId);
+                    const addOnItem = product.addOns?.find((ao) => ao.addOnProduct.id === addonId);
                     const addon = addOnItem?.addOnProduct;
                     return addon ? {
                         productId: addon.id,
                         name: addon.name,
                         price: addon.price,
-                        image: addon.images[0] || null,
+                        image: addon.images[0] || "",
                     } : null;
                 }).filter(Boolean) as Array<{ productId: string; name: string; price: number; image: string; }>}
             />
@@ -244,7 +245,7 @@ export default function ProductDetail({ product }: { product: any }) {
       {product.addOns && product.addOns.length > 0 && (
         <div className="mt-8 space-y-4">
           <h3 className="text-sm font-medium text-gray-900">推薦配件</h3>
-          {product.addOns.map((addOnItem: any) => {
+          {product.addOns.map((addOnItem) => {
             const addon = addOnItem.addOnProduct;
             return (
             <div key={addon.id} className={`bg-gray-50 rounded-lg p-4 border ${selectedAddons.includes(addon.id) ? "border-gray-500" : "border-gray-300"}`}>

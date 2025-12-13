@@ -101,7 +101,7 @@ export async function PUT(
     }
 
     return NextResponse.json(category);
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error updating category:", error);
 
     return NextResponse.json(

@@ -1,6 +1,5 @@
-import { ImageText } from "../interface/static";
 
-export const imageText1:ImageText = {
+export const imageText1 = {
   image: "/images/imagetext1.jpeg",
   imageAlt: "About Us",
   subtitle: "關於我們",
@@ -10,7 +9,7 @@ export const imageText1:ImageText = {
   alignment: "left",
 }
 
-export const imageText2:ImageText = {
+export const imageText2 = {
   image: "/images/imagetext2.jpeg",
   imageAlt: "Store Location",
   subtitle: "",

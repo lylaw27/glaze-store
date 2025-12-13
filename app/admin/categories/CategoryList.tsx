@@ -1,14 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import type { Category } from "@/types/product";
 
-interface Category {
-  id: string;
-  name: string;
-  handle: string;
-  type: string;
-  createdAt: string;
-  updatedAt: string;
+interface CategoryWithCount extends Category {
   _count?: {
     products: number;
   };
@@ -39,8 +34,8 @@ function CategoryForm({ onSubmit, initialData, onCancel }: CategoryFormProps) {
         setHandle("");
         setType("");
       }
-    } catch (err: any) {
-      setError(err.message || "An error occurred");
+    } catch (err: unknown) {
+      setError((err as Error).message || "An error occurred");
     } finally {
       setIsLoading(false);
     }
@@ -122,8 +117,8 @@ function CategoryForm({ onSubmit, initialData, onCancel }: CategoryFormProps) {
 }
 
 interface CategoryListProps {
-  categories: Category[];
-  onEdit: (category: Category) => void;
+  categories: CategoryWithCount[];
+  onEdit: (category: CategoryWithCount) => void;
   onDelete: (id: string) => void;
 }
 
@@ -137,7 +132,7 @@ export default function CategoryList({ categories, onEdit, onDelete }: CategoryL
 
     setDeletingId(id);
     try {
-      await onDelete(id);
+      onDelete(id);
     } finally {
       setDeletingId(null);
     }
@@ -150,7 +145,7 @@ export default function CategoryList({ categories, onEdit, onDelete }: CategoryL
     }
     acc[category.type].push(category);
     return acc;
-  }, {} as Record<string, Category[]>);
+  }, {} as Record<string, CategoryWithCount[]>);
 
   return (
     <div className="space-y-6">

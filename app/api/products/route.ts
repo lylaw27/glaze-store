@@ -69,17 +69,25 @@ export async function GET(request: Request) {
     }
 
     // Filter by categories if specified (client-side for multiple categories due to join complexity)
-    type ProductWithRelations = {
+    type ProductQueryResult = {
+      id: string;
+      name: string;
+      handle: string;
+      description: string | null;
+      price: number;
+      stock: number;
+      status: string;
+      createdAt: Date;
+      updatedAt: Date;
       categories: Array<{ category: { handle: string } }>;
-      variants: Array<{ options: string }> | null;
-      addOns: Array<{ id: string; addOnProduct: unknown }> | null;
+      variants: Array<{ id: string; productId: string; options: string; createdAt: Date; updatedAt: Date }> | null;
+      addOns: Array<{ id: string; addOnProduct: Record<string, string | number | Date | null> }> | null;
       images: string;
-      [key: string]: unknown;
     };
     
-    let filteredProducts: ProductWithRelations[] = (products || []) as ProductWithRelations[];
+    let filteredProducts: ProductQueryResult[] = (products || []) as ProductQueryResult[];
     if (categories.length > 0) {
-      filteredProducts = filteredProducts.filter((product: ProductWithRelations) =>
+      filteredProducts = filteredProducts.filter((product) =>
         product.categories.some((pc) =>
           categories.includes(pc.category.handle)
         )
@@ -87,21 +95,42 @@ export async function GET(request: Request) {
     }
 
     // Parse images from JSON string, format categories, and handle variants/addOns
-    const productsWithParsedFields = filteredProducts.map((product: ProductWithRelations) => ({
-      ...product,
-      categories: product.categories.map((pc) => pc.category.handle),
-      images: JSON.parse(product.images),
-      variants: product.variants && product.variants.length > 0
-        ? { ...product.variants[0], options: JSON.parse(product.variants[0].options) }
-        : null,
-      addOns: product.addOns?.map(ao => ({
-        ...ao,
-        addOnProduct: {
-          ...ao.addOnProduct,
-          images: JSON.parse((ao.addOnProduct as { images: string }).images),
-        }
-      })) || [],
-    }));
+    const productsWithParsedFields = filteredProducts.map((product) => {
+      return {
+        ...product,
+        categories: product.categories.map((pc) => pc.category.handle),
+        images: JSON.parse(product.images),
+        variants: product.variants && product.variants.length > 0
+          ? { ...product.variants[0], options: JSON.parse(product.variants[0].options) }
+          : null,
+        addOns: product.addOns?.map((ao) => {
+          const addOnProduct = ao.addOnProduct as {
+            id: string;
+            name: string;
+            handle: string;
+            description: string | null;
+            price: number;
+            stock: number;
+            status: string;
+            createdAt: Date;
+            updatedAt: Date;
+            images: string;
+          };
+          
+          return {
+            id: ao.id,
+            mainProductId: product.id,
+            addOnProductId: addOnProduct.id,
+            createdAt: new Date(),
+            addOnProduct: {
+              ...addOnProduct,
+              status: addOnProduct.status as 'active' | 'hidden',
+              images: JSON.parse(addOnProduct.images),
+            }
+          };
+        }) || [],
+      };
+    });
 
     return NextResponse.json(productsWithParsedFields);
   } catch (error) {

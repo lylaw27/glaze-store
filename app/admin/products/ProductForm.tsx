@@ -2,70 +2,16 @@
 
 import { useState, useRef, useEffect } from "react";
 import Image from "next/image";
-
-interface Category {
-  id: string;
-  name: string;
-  type: string;
-}
-
-interface ImageItem {
-  id: string;
-  url: string;
-  file?: File;
-  isNew?: boolean;
-}
-
-interface ProductCategory {
-  id: string;
-  category: Category;
-}
-
-interface VariantOption {
-  name: string;
-  values: string; // Comma-separated string, will be split on submit
-}
-
-interface ProductVariant {
-  id: string;
-  options: VariantOption[];
-}
-
-interface ProductAddOn {
-  id: string;
-  addOnProduct: {
-    id: string;
-    name: string;
-    price: number;
-    images: string;
-  };
-}
-
-interface Product {
-  id: string;
-  name: string;
-  handle: string;
-  price: number;
-  images: string;
-  stock: number;
-  status: string;
-}
+import type { 
+  Product, 
+  Category, 
+  VariantOptionForm,
+  ImageItem 
+} from "@/types/product";
 
 interface ProductFormProps {
   action: (formData: FormData) => Promise<void>;
-  initialData?: {
-    id: string;
-    name: string;
-    handle: string;
-    description: string | null;
-    price: number;
-    stock: number;
-    status: string;
-    images: string; // JSON array of image URLs
-    categories: ProductCategory[];
-    variants?: ProductVariant[];
-    addOns?: ProductAddOn[];
-  };
+  initialData?: Product
   onClose?: () => void;
 }
 
@@ -101,13 +47,13 @@ export default function ProductForm({
         const options = initialData.variants[0].options;
         // Parse if it's a JSON string, otherwise use as-is
         const parsedOptions = typeof options === 'string' ? JSON.parse(options) : options;
-        return Array.isArray(parsedOptions) ? parsedOptions.map((opt: any) => ({
+        return Array.isArray(parsedOptions) ? parsedOptions.map((opt: { name: string; values: string[] | string }) => ({
           name: opt.name,
           values: Array.isArray(opt.values) ? opt.values.join(", ") : opt.values
         })) : [];
       })()
     : [];
-  const [variantOptions, setVariantOptions] = useState<VariantOption[]>(initialVariants);
+  const [variantOptions, setVariantOptions] = useState<VariantOptionForm[]>(initialVariants);
 
   const isEditing = !!initialData;
 
@@ -477,6 +423,7 @@ export default function ProductForm({
           Product Status *
         </label>
         <select
+          title="status"
           value={status}
           onChange={(e) => setStatus(e.target.value)}
           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"

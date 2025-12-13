@@ -31,6 +31,7 @@ export default async function OrdersPage() {
 
     const { error } = await supabaseAdmin
       .from("Order")
+      // @ts-expect-error - Supabase type generation issue
       .update({ status })
       .eq("id", id);
 

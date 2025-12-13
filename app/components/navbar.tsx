@@ -3,18 +3,12 @@
 import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import Image from "next/image"
-import { Search, User, ShoppingCart, Menu, X, Minus, Plus } from "lucide-react"
+import { Search, User, ShoppingCart, Menu } from "lucide-react"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetClose } from "@/components/ui/sheet"
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion"
 import CartDrawer from "./cartDrawer"
 import { useCart } from "@/app/cartProvider"
-
-type LinkItem = { label: string; href: string }
-type Section = { title?: string; links: LinkItem[] }
-type Promo = { image: string; alt: string; caption?: string; href?: string }
-type MenuItem =
-  | { label: string; href: string; dropdown?: never; promos?: never }
-  | { label: string; href?: string; dropdown: Section[]; promos?: Promo[] }
+import { MenuItem } from "@/types"
 
 // Desktop menu data with right-side promos like the screenshot
 const MENU: MenuItem[] = [
@@ -210,7 +204,7 @@ export default function Navbar({ navFix }:{ navFix: boolean}) {
   }
   const scheduleClose = () => {
     if (closeTimer.current) window.clearTimeout(closeTimer.current)
-    closeTimer.current = window.setTimeout(() => setActiveIdx(null), 100) as unknown as number
+    closeTimer.current = window.setTimeout(() => setActiveIdx(null), 100)
   }
 
   return (
@@ -297,8 +291,8 @@ export default function Navbar({ navFix }:{ navFix: boolean}) {
                           <div className="grid grid-cols-12 gap-8 p-8">
                             {/* Text columns */}
                             <div className="col-span-12 lg:col-span-8 grid grid-cols-2 md:grid-cols-3 gap-8">
-                              {item.dropdown.map((section, sIdx) => (
-                                <div key={sIdx} className="min-w-[12rem]">
+                              {item.dropdown?.map((section, sIdx) => (
+                                <div key={sIdx} className="min-w-48">
                                   {section.title && (
                                     <div className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-3">
                                       {section.title}
@@ -390,7 +384,7 @@ function MobileMenu() {
                     <AccordionTrigger className="px-2 py-3 text-base">{item.label.replace(" ▼", "")}</AccordionTrigger>
                     <AccordionContent>
                       <div className="px-2 pb-3">
-                        {item.dropdown.map((section, sIdx) => (
+                        {item.dropdown?.map((section, sIdx) => (
                           <div key={sIdx} className="mb-4">
                             {section.title && (
                               <div className="px-2 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">

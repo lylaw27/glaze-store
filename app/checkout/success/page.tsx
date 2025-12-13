@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useCart } from "@/app/cartProvider"
 import { Button } from "@/components/ui/button"
@@ -10,22 +10,23 @@ export default function CheckoutSuccessPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { clearCart } = useCart()
-  const [loading, setLoading] = useState(true)
+  const paymentIntent = searchParams.get("payment_intent")
 
   useEffect(() => {
-    const paymentIntent = searchParams.get("payment_intent")
-    
-    if (paymentIntent) {
-      // Clear the cart after successful payment
-      clearCart()
-      setLoading(false)
-    } else {
-      // Redirect to home if no payment intent
+    // Redirect to home if no payment intent
+    if (!paymentIntent) {
       router.push("/")
     }
-  }, [searchParams, clearCart, router])
+  }, [paymentIntent, router])
 
-  if (loading) {
+  useEffect(() => {
+    // Clear the cart after successful payment
+    if (paymentIntent) {
+      clearCart()
+    }
+  }, [paymentIntent, clearCart])
+
+  if (!paymentIntent) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">

@@ -62,7 +62,7 @@ export default function Footer() {
           <div className="flex flex-col items-center space-y-4">
             <div className="flex flex-wrap justify-center gap-4">
               {paymentMethods.map((method, index) => (
-                <div key={index} className="flex-shrink-0">
+                <div key={index} className="shrink-0">
                   <Image
                     src={method.icon || "/placeholder.svg"}
                     alt={method.name}

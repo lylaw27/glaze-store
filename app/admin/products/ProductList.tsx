@@ -3,50 +3,7 @@
 import { useState } from "react";
 import ProductForm from "./ProductForm";
 import Image from "next/image";
-
-interface Category {
-  id: string;
-  name: string;
-  type: string;
-}
-
-interface ProductCategory {
-  id: string;
-  category: Category;
-}
-
-interface VariantOption {
-  name: string;
-  values: string[];
-}
-
-interface ProductVariant {
-  id: string;
-  options: VariantOption[];
-}
-
-interface ProductAddOn {
-  id: string;
-  addOnProduct: {
-    id: string;
-    name: string;
-  };
-}
-
-interface Product {
-  id: string;
-  name: string;
-  handle: string;
-  description: string | null;
-  price: number;
-  stock: number;
-  status: string;
-  images: string; // JSON array of image URLs
-  categories: ProductCategory[];
-  variants?: ProductVariant[];
-  addOns?: ProductAddOn[];
-  createdAt: Date;
-}
+import type { Product } from "@/types/product";
 
 interface ProductListProps {
   products: Product[];

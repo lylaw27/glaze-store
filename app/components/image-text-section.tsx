@@ -1,8 +1,18 @@
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
-// import { ImageText } from "../interface/static"
 
-export default function ImageTextSection({ props }) {
+interface ImageTextProps {
+  alignment: 'left' | 'right';
+  image: string;
+  imageAlt: string;
+  title: string;
+  subtitle?: string;
+  description: string;
+  buttonText?: string;
+  buttonLink?: string;
+}
+
+export default function ImageTextSection({ props }: { props: ImageTextProps }) {
   const isImageLeft = props.alignment === "left"
 
   return (

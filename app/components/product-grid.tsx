@@ -1,6 +1,5 @@
 import Image from "next/image"
-import { Category } from "../interface/static"
-
+import { Category } from "../jsonFiles/categories"
 
 export default function ProductGrid({ categories }: { categories: Category[] }) {
   return (
@@ -15,7 +14,7 @@ export default function ProductGrid({ categories }: { categories: Category[] }) 
               category.span === "double" ? "lg:col-span-2" : ""
             }`}
           >
-            <div className="aspect-[4/3] relative">
+            <div className="aspect-4/3 relative">
               <Image 
                 src={category.image || "/placeholder.svg"}
                 alt={category.title}

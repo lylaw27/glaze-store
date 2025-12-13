@@ -1,5 +1,6 @@
 import { supabaseAdmin } from "@/lib/supabase";
 import { NextResponse } from "next/server";
+import { ProductQueryResult, ProductWithRelations } from "@/types";
 
 // GET /api/products/[id] - Get a single product by ID
 export async function GET(
@@ -29,18 +30,24 @@ export async function GET(
       return NextResponse.json({ error: "Product not found" }, { status: 404 });
     }
 
+    const productData = product as ProductQueryResult;
+
     // Format categories, parse variants and addOns
-    const productWithFormattedData = {
-      ...product,
-      categories: product.categories.map((pc: any) => pc.category.handle),
-      images: JSON.parse(product.images),
-      variants: product.variants && product.variants.length > 0
-        ? { ...product.variants[0], options: JSON.parse(product.variants[0].options) }
+    const productWithFormattedData: ProductWithRelations = {
+      ...productData,
+      categories: productData.categories.map((pc) => pc.category.handle),
+      images: JSON.parse(productData.images),
+      variants: productData.variants && productData.variants.length > 0
+        ? { ...productData.variants[0], options: JSON.parse(productData.variants[0].options) }
         : null,
-      addOns: product.addOns?.map((ao: any) => ({
-        ...ao,
+      addOns: productData.addOns?.map((ao) => ({
+        id: ao.id,
+        mainProductId: productData.id,
+        addOnProductId: ao.addOnProduct.id,
+        createdAt: new Date(),
         addOnProduct: {
           ...ao.addOnProduct,
+          status: ao.addOnProduct.status as 'active' | 'hidden',
           images: JSON.parse(ao.addOnProduct.images),
         }
       })) || [],

@@ -6,9 +6,9 @@ import { ChevronLeft, ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import Image from "next/image"
 import { useState, useEffect, useRef } from "react"
-// import { HeroSlide } from "../interface/static"
+import { HeroCarouselProps, HeroSlide } from "@/types"
 
-export default function HeroSection({slides}) {
+export default function HeroSection({slides}: HeroCarouselProps) {
   const [currentSlide, setCurrentSlide] = useState(0)
   const [isAutoPlaying, setIsAutoPlaying] = useState(true)
   const [touchStart, setTouchStart] = useState<number | null>(null)
@@ -87,10 +87,10 @@ export default function HeroSection({slides}) {
     }, 5000) // Change slide every 5 seconds
 
     return () => clearInterval(interval)
-  }, [isAutoPlaying])
+  }, [isAutoPlaying,slides])
 
   return (
-    <div className="relative min-h-screen bg-gradient-to-br from-stone-100 to-stone-200 overflow-hidden touch-pan-y">
+    <div className="relative min-h-screen bg-linear-to-br from-stone-100 to-stone-200 overflow-hidden touch-pan-y">
       {/* Carousel Container */}
       <div className="relative h-screen">
         {/* Slides */}
@@ -105,8 +105,8 @@ export default function HeroSection({slides}) {
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
         >
-          {slides.map((slide, index) => (
-            <div key={slide.id} className="min-w-full h-full relative flex items-center">
+          {slides.map((slide: HeroSlide, index: number) => (
+            <div key={index} className="min-w-full h-full relative flex items-center">
               {/* Background Image */}
               <div className="absolute inset-0">
                 <Image

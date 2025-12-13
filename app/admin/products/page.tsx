@@ -4,18 +4,25 @@ import { uploadProductImage, deleteProductImages } from "@/lib/supabase";
 import ProductList from "./ProductList";
 import ProductForm from "./ProductForm";
 import { randomUUID } from "crypto";
+import { AdminProductQueryResult, AdminProduct, ProductStatus } from "@/types";
 
-async function getProducts() {
+async function getProducts(): Promise<AdminProduct[]> {
   const { data: products, error } = await supabaseAdmin
     .from("Product")
     .select(`
       *,
       categories:ProductCategory(
+        id,
+        productId,
+        categoryId,
         category:Category(*)
       ),
       variants:ProductVariant(*),
       addOns:ProductAddOn!ProductAddOn_mainProductId_fkey(
         id,
+        mainProductId,
+        addOnProductId,
+        createdAt,
         addOnProduct:Product!ProductAddOn_addOnProductId_fkey(*)
       )
     `)
@@ -25,7 +32,18 @@ async function getProducts() {
     throw error;
   }
 
-  return products || [];
+  // Type cast and parse the results
+  const typedProducts = (products || []) as AdminProductQueryResult[];
+  
+  return typedProducts.map((product): AdminProduct => ({
+    ...product,
+    status: product.status as ProductStatus,
+    variants: product.variants?.map(v => ({
+      ...v,
+      options: JSON.parse(v.options)
+    })),
+    addOns: product.addOns
+  }));
 }
 
 export default async function ProductsPage() {
@@ -38,11 +56,11 @@ export default async function ProductsPage() {
     const description = formData.get("description") as string;
     const price = parseFloat(formData.get("price") as string);
     const stock = parseInt(formData.get("stock") as string);
-    const status = formData.get("status") as string || "active";
+    const status = (formData.get("status") as string || "active") as ProductStatus;
     const newImageCount = parseInt(formData.get("newImageCount") as string) || 0;
-    const categoryIds = JSON.parse(formData.get("categoryIds") as string || "[]");
+    const categoryIds: string[] = JSON.parse(formData.get("categoryIds") as string || "[]");
     const variantOptions = formData.get("variantOptions") as string;
-    const addOnProductIds = JSON.parse(formData.get("addOnProductIds") as string || "[]");
+    const addOnProductIds: string[] = JSON.parse(formData.get("addOnProductIds") as string || "[]");
 
     const imageUrls: string[] = [];
 
@@ -59,6 +77,7 @@ export default async function ProductsPage() {
     // Create product
     const { data: product, error: productError } = await supabaseAdmin
       .from("Product")
+      // @ts-expect-error - Supabase type generation issue
       .insert({
         name,
         handle,
@@ -71,20 +90,24 @@ export default async function ProductsPage() {
       .select()
       .single();
 
-    if (productError) {
-      throw productError;
+    if (productError || !product) {
+      throw productError || new Error("Failed to create product");
     }
+
+    type CreatedProduct = { id: string };
+    const typedProduct = product as CreatedProduct;
 
     // Create product-category relationships
     if (categoryIds.length > 0) {
-      const productCategories = categoryIds.map((categoryId: string) => ({
+      const productCategories = categoryIds.map((categoryId) => ({
         id: randomUUID(),
-        productId: product.id,
+        productId: typedProduct.id,
         categoryId,
       }));
 
       const { error: categoryError } = await supabaseAdmin
         .from("ProductCategory")
+        // @ts-expect-error - Supabase type generation issue
         .insert(productCategories);
 
       if (categoryError) {
@@ -94,11 +117,12 @@ export default async function ProductsPage() {
 
     // Create product variants if provided
     if (variantOptions && variantOptions !== "[]") {
-      const { error: variantError } = await supabaseAdmin
+      const { error: variantError} = await supabaseAdmin
         .from("ProductVariant")
+        // @ts-expect-error - Supabase type generation issue
         .insert({
           id: randomUUID(),
-          productId: product.id,
+          productId: typedProduct.id,
           options: variantOptions,
         });
 
@@ -109,14 +133,15 @@ export default async function ProductsPage() {
 
     // Create product add-on relationships
     if (addOnProductIds.length > 0) {
-      const productAddOns = addOnProductIds.map((addOnProductId: string) => ({
+      const productAddOns = addOnProductIds.map((addOnProductId) => ({
         id: randomUUID(),
-        mainProductId: product.id,
+        mainProductId: typedProduct.id,
         addOnProductId,
       }));
 
       const { error: addOnError } = await supabaseAdmin
         .from("ProductAddOn")
+        // @ts-expect-error - Supabase type generation issue
         .insert(productAddOns);
 
       if (addOnError) {
@@ -135,13 +160,13 @@ export default async function ProductsPage() {
     const description = formData.get("description") as string;
     const price = parseFloat(formData.get("price") as string);
     const stock = parseInt(formData.get("stock") as string);
-    const status = formData.get("status") as string || "active";
+    const status = (formData.get("status") as string || "active") as ProductStatus;
     const newImageCount = parseInt(formData.get("newImageCount") as string) || 0;
-    const existingImages = JSON.parse(formData.get("existingImages") as string || "[]");
-    const removedImages = JSON.parse(formData.get("removedImages") as string || "[]");
-    const categoryIds = JSON.parse(formData.get("categoryIds") as string || "[]");
+    const existingImages: string[] = JSON.parse(formData.get("existingImages") as string || "[]");
+    const removedImages: string[] = JSON.parse(formData.get("removedImages") as string || "[]");
+    const categoryIds: string[] = JSON.parse(formData.get("categoryIds") as string || "[]");
     const variantOptions = formData.get("variantOptions") as string;
-    const addOnProductIds = JSON.parse(formData.get("addOnProductIds") as string || "[]");
+    const addOnProductIds: string[] = JSON.parse(formData.get("addOnProductIds") as string || "[]");
 
     // Delete removed images from storage
     if (removedImages.length > 0) {
@@ -165,6 +190,7 @@ export default async function ProductsPage() {
     // Update product
     const { error: updateError } = await supabaseAdmin
       .from("Product")
+      // @ts-expect-error - Supabase type generation issue
       .update({
         name,
         handle,
@@ -192,7 +218,7 @@ export default async function ProductsPage() {
 
     // Create new category relationships
     if (categoryIds.length > 0) {
-      const productCategories = categoryIds.map((categoryId: string) => ({
+      const productCategories = categoryIds.map((categoryId) => ({
         id: randomUUID(),
         productId: id,
         categoryId,
@@ -200,6 +226,7 @@ export default async function ProductsPage() {
 
       const { error: categoryError } = await supabaseAdmin
         .from("ProductCategory")
+        // @ts-expect-error - Supabase type generation issue
         .insert(productCategories);
 
       if (categoryError) {
@@ -219,6 +246,7 @@ export default async function ProductsPage() {
         // Update existing variant
         const { error: variantError } = await supabaseAdmin
           .from("ProductVariant")
+        // @ts-expect-error - Supabase type generation issue
           .update({ options: variantOptions })
           .eq("productId", id);
 
@@ -229,6 +257,7 @@ export default async function ProductsPage() {
         // Create new variant
         const { error: variantError } = await supabaseAdmin
           .from("ProductVariant")
+        // @ts-expect-error - Supabase type generation issue
           .insert({
             id: randomUUID(),
             productId: id,
@@ -264,7 +293,7 @@ export default async function ProductsPage() {
 
     // Create new add-on relationships
     if (addOnProductIds.length > 0) {
-      const productAddOns = addOnProductIds.map((addOnProductId: string) => ({
+      const productAddOns = addOnProductIds.map((addOnProductId) => ({
         id: randomUUID(),
         mainProductId: id,
         addOnProductId,
@@ -272,6 +301,7 @@ export default async function ProductsPage() {
 
       const { error: addOnError } = await supabaseAdmin
         .from("ProductAddOn")
+        // @ts-expect-error - Supabase type generation issue
         .insert(productAddOns);
 
       if (addOnError) {
@@ -297,9 +327,12 @@ export default async function ProductsPage() {
       throw fetchError;
     }
 
+    type ProductWithImages = { images: string };
+    const typedProduct = product as ProductWithImages | null;
+
     // Delete all images from Supabase
-    if (product?.images) {
-      const imageUrls = JSON.parse(product.images);
+    if (typedProduct?.images) {
+      const imageUrls: string[] = JSON.parse(typedProduct.images);
       if (imageUrls.length > 0) {
         await deleteProductImages(imageUrls);
       }

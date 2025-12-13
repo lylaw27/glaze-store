@@ -1,5 +1,6 @@
 import { supabaseAdmin } from "@/lib/supabase";
 import { NextResponse } from "next/server";
+import { CategoryWithCount } from "@/types";
 
 // GET all categories
 export async function GET() {
@@ -17,7 +18,7 @@ export async function GET() {
     }
 
     // Format to match expected structure
-    const formattedCategories = categories?.map((cat: any) => ({
+    const formattedCategories: CategoryWithCount[] = (categories || []).map((cat) => ({
       ...cat,
       _count: {
         products: cat.products?.length || 0,
@@ -69,7 +70,7 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json(category, { status: 201 });
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error creating category:", error);
 
     return NextResponse.json(

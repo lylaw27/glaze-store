@@ -97,6 +97,7 @@ export default function OrderList({
                   ${order.totalAmount.toFixed(2)}
                 </p>
                 <select
+                  title="orderStatus"
                   value={order.status}
                   onChange={(e) => {
                     e.stopPropagation();

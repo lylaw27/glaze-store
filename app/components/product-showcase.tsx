@@ -13,7 +13,7 @@ export default function ProductShowcase({ products }: ProductShowcaseProps) {
       <div className="container mx-auto px-4">
         {/* Header */}
         <div className="flex justify-end mb-8">
-          <button className="text-gray-600 hover:text-amber-600 transition-colors text-sm">全部</button>
+          <button type="button" className="text-gray-600 hover:text-amber-600 transition-colors text-sm">全部</button>
         </div>
 
         {/* Products Grid */}

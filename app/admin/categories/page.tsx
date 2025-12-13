@@ -2,21 +2,16 @@
 
 import { useState, useEffect } from "react";
 import CategoryList, { CategoryForm } from "./CategoryList";
+import type { Category } from "@/types/product";
 
-interface Category {
-  id: string;
-  name: string;
-  handle: string;
-  type: string;
-  createdAt: string;
-  updatedAt: string;
+interface CategoryWithCount extends Category {
   _count?: {
     products: number;
   };
 }
 
 export default function CategoriesPage() {
-  const [categories, setCategories] = useState<Category[]>([]);
+  const [categories, setCategories] = useState<CategoryWithCount[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
@@ -28,8 +23,8 @@ export default function CategoriesPage() {
       if (!response.ok) throw new Error("Failed to fetch categories");
       const data = await response.json();
       setCategories(data);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError((err as Error).message);
     } finally {
       setIsLoading(false);
     }
