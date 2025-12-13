@@ -36,8 +36,8 @@ export default function Footer() {
           {/* Brand and Social Media */}
           <div className="lg:col-span-1 flex flex-col items-center lg:items-end space-y-4">
             <div className="text-center lg:text-right">
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">White on</h2>
-              <div className="flex space-x-4 justify-center lg:justify-end">
+              <Image width={90} height={90} src="/images/glaze-logo-dark.png" alt="Glaze Logo"/>
+              <div className="flex space-x-4 justify-center lg:justify-end p-5">
                 <Link
                   href="https://instagram.com"
                   className="text-gray-600 hover:text-gray-900 transition-colors duration-200"
@@ -77,7 +77,7 @@ export default function Footer() {
             {/* Copyright */}
             <div className="text-center">
               <p className="text-xs text-gray-500">
-                © 2025 White on all rights reserved. DPMS Category A Registrant (Registration No. A-B-25-01-08658)
+                © 2025 Glaze HK rights reserved. DPMS Category A Registrant (Registration No. A-B-25-01-08658)
               </p>
             </div>
           </div>

@@ -1,17 +1,38 @@
 export const hero1 = [
   {
     id: 1,
-    title: "8月限定禮遇",
-    subtitle: "滿HK$1000（折後）即可到門市領取指定晶能量石及秘魯聖木一份，隨機派發， 數量有限，送完即止。",
-    buttonText: "了解詳情",
+    title: "「一鏈兩戴」創新設計",
+    subtitle: "自由翻轉前後造型，隨時隨地輕鬆轉換風格。",
+    buttonText: "查看更多",
     image: "/images/hero1-1.jpeg",
   },
   {
     id: 2,
-    title: "新品上市",
-    subtitle: "全新水晶系列現已上架，精選天然水晶，為您帶來正能量與內心平靜，立即選購享受早鳥優惠。",
+    title: "「五行水晶手鏈」融合五行智慧",
+    subtitle: "以相生水晶手鏈，平衡你的專屬能量場。",
     buttonText: "立即選購",
     image: "/images/hero1-2.jpeg",
+  },
+    {
+    id: 3,
+    title: "「925水晶手鏈」",
+    subtitle: "採用親膚抗過敏的925純銀，搭配可自由調節鏈長設計，極簡線條中展現個性風格。",
+    buttonText: "探索更多",
+    image: "/images/hero1-3.jpeg",
+  },
+    {
+    id: 4,
+    title: "「一鏈兩戴」創新設計",
+    subtitle: "自由翻轉前後造型，隨時隨地輕鬆轉換風格。",
+    buttonText: "查看更多",
+    image: "/images/hero1-4.jpeg",
+  },
+    {
+    id: 5,
+    title: "「一鏈兩戴」創新設計",
+    subtitle: "自由翻轉前後造型，隨時隨地輕鬆轉換風格。",
+    buttonText: "查看更多",
+    image: "/images/hero1-5.jpeg",
   },
 ]
 
