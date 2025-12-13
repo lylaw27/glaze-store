@@ -7,8 +7,8 @@ const getBaseUrl = () => {
     return "";
   }
   // Server-side: use absolute URL
-  if (process.env.PROD == "true") {
-    return "";
+  if (process.env.NEXT_PUBLIC_BASE_URL) {
+    return process.env.NEXT_PUBLIC_BASE_URL;
   }
   // Fallback for local development
   return `http://localhost:${process.env.PORT || 3000}`;
