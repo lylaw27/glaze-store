@@ -196,7 +196,7 @@ export default function ProductDetail({ product }: { product: ProductWithRelatio
               >
                 <Minus className="h-4 w-4" />
               </button>
-              <div className="px-4 py-3 text-base font-medium tabular-nums min-w-[3rem] text-center">{quantity}</div>
+              <div className="px-4 py-3 text-base font-medium tabular-nums min-w-12 text-center">{quantity}</div>
               <button onClick={() => setQuantity(quantity + 1)} className="p-3 hover:bg-gray-50" aria-label="增加數量">
                 <Plus className="h-4 w-4" />
               </button>
@@ -256,7 +256,7 @@ export default function ProductDetail({ product }: { product: ProductWithRelatio
                   onCheckedChange={() => toggleAddon(addon.id)}
                   className="mt-1"
                 />
-                <div className="flex-shrink-0">
+                <div className="shrink-0">
                   <Image
                     src={addon.images[0] || "/placeholder.svg?height=80&width=80&query=addon%20image"}
                     alt={addon.name}
