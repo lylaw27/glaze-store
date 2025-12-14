@@ -27,12 +27,12 @@ export default function HeroImageSection({slide}: { slide: HeroSlide }) {
               <div className="relative z-10 container mx-auto px-4">
                 <div className="max-w-2xl">
                   {/* Main Heading */}
-                  <h1 className="text-6xl md:text-8xl font-light text-white mb-6 leading-tight animate-fade-in">
+                  <h1 className="md:text-6xl text-5xl font-light text-white mb-6 leading-tight animate-fade-in">
                     {slide.title}
                   </h1>
 
                   {/* Subtitle */}
-                  <p className="text-lg md:text-xl text-white/90 mb-8 leading-relaxed animate-fade-in-delay">
+                  <p className="md:text-lg text-md text-white/90 mb-8 leading-relaxed animate-fade-in-delay">
                     {slide.subtitle}
                   </p>
 
