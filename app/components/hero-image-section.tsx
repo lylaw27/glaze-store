@@ -13,14 +13,14 @@ export default function HeroImageSection({slide}: { slide: HeroSlide }) {
         {/* Slides */}
             <div key={slide.id} className="min-w-full h-[80vh] relative flex items-center">
               {/* Background Image */}
-              <div className="absolute inset-0">
+              <div className="absolute inset-0"> 
                 <Image
                   src={slide.image || "/placeholder.svg"}
                   alt={`Slide ${slide.id}`}
                   fill
                   className="object-cover"
                 />
-                <div className="absolute inset-0 bg-black/10"></div>
+                <div className="absolute inset-0 bg-gray-900/40"></div>
               </div>
 
               {/* Content Overlay */}
