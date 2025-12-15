@@ -7,9 +7,9 @@ import { HeroSlide } from "@/types"
 export default function HeroImageSection({slide}: { slide: HeroSlide }) {
 
   return (
-    <div className="relative min-h-screen bg-linear-to-br from-stone-100 to-stone-200 overflow-hidden touch-pan-y">
+    <div className="relative min-h-[80vh] bg-linear-to-br from-stone-100 to-stone-200 overflow-hidden touch-pan-y">
       {/* Carousel Container */}
-      <div className="relative h-screen">
+      <div className="relative h-[80vh]">
         {/* Slides */}
             <div key={slide.id} className="min-w-full h-[80vh] relative flex items-center">
               {/* Background Image */}

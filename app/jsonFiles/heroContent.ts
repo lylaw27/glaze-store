@@ -77,6 +77,14 @@ export const hero3 = {
   title: "探索更多",
   subtitle: "發現我們最新的水晶系列，為您的生活帶來更多靈感與能量。",
   buttonText: "立即探索",
+  image: "/images/hero1-3.jpeg",
+}
+
+export const hero3m = {
+  id: 3,
+  title: "探索更多",
+  subtitle: "發現我們最新的水晶系列，為您的生活帶來更多靈感與能量。",
+  buttonText: "立即探索",
   image: "/images/hero3-1.jpeg",
 }
 
