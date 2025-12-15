@@ -11,7 +11,7 @@ export default function HeroImageSection({slide}: { slide: HeroSlide }) {
       {/* Carousel Container */}
       <div className="relative h-screen">
         {/* Slides */}
-            <div key={slide.id} className="min-w-full h-full relative flex items-center">
+            <div key={slide.id} className="min-w-full h-[80vh] relative flex items-center">
               {/* Background Image */}
               <div className="absolute inset-0">
                 <Image

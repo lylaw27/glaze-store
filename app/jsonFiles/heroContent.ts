@@ -36,6 +36,16 @@ export const hero1 = [
   },
 ]
 
+export const hero1m = 
+  {
+    id: 1,
+    title: "「一鏈兩戴」創新設計",
+    subtitle: "自由翻轉前後造型，隨時隨地輕鬆轉換風格。",
+    buttonText: "查看更多",
+    image: "/images/hero1-1.jpeg",
+  }
+  
+
 export const hero2 = [
   {
     id: 1,
@@ -52,6 +62,15 @@ export const hero2 = [
     image: "/images/hero2-2.jpeg",
   },
 ]
+
+export const hero2m = 
+  {
+    id: 2,
+    title: "「五行水晶手鏈」融合五行智慧",
+    subtitle: "以相生水晶手鏈，平衡你的專屬能量場。",
+    buttonText: "立即選購",
+    image: "/images/hero2-1.jpeg",
+  }
 
 export const hero3 = {
   id: 3,
