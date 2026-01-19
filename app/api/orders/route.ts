@@ -170,3 +170,40 @@ export async function POST(request: Request) {
     );
   }
 }
+
+// GET /api/orders - Get orders (optionally filter by paymentId)
+export async function GET(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const paymentId = searchParams.get("paymentId");
+
+    let query = supabaseAdmin
+      .from("Order")
+      .select(`
+        *,
+        items:OrderItem(
+          *,
+          product:Product(*)
+        )
+      `)
+      .order("createdAt", { ascending: false });
+
+    if (paymentId) {
+      query = query.eq("paymentId", paymentId);
+    }
+
+    const { data: orders, error } = await query;
+
+    if (error) {
+      throw error;
+    }
+
+    return NextResponse.json(orders || []);
+  } catch (error) {
+    console.error("Error fetching orders:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch orders" },
+      { status: 500 }
+    );
+  }
+}

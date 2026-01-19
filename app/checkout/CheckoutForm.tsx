@@ -43,6 +43,7 @@ export default function CheckoutForm() {
       elements,
       confirmParams: {
         return_url: `${window.location.origin}/checkout/success`,
+        receipt_email: email,
       },
     })
 
@@ -131,6 +132,7 @@ export default function CheckoutForm() {
               elements,
               confirmParams: {
                 return_url: `${window.location.origin}/checkout/success`,
+                receipt_email: email,
               },
             })
 

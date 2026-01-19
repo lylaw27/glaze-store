@@ -122,6 +122,7 @@ export interface ProductQueryResult {
 // Stripe Payment Intent types
 export interface StripePaymentItem {
   id: string;
+  productId: string;
   name: string;
   quantity: number;
   price: number;
