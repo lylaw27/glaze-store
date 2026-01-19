@@ -8,7 +8,10 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 
 export async function POST(req: NextRequest) {
   try {
-    const { items, amount }: StripePaymentIntentRequest = await req.json()
+    const { items, amount, customerEmail, customerName }: StripePaymentIntentRequest & { 
+      customerEmail?: string; 
+      customerName?: string 
+    } = await req.json()
 
     // Validate the amount
     if (!amount || amount <= 0) {
@@ -29,16 +32,20 @@ export async function POST(req: NextRequest) {
         "wechat_pay",
       ],
       // Automatic payment methods includes Apple Pay, Google Pay, etc.
-    //   automatic_payment_methods: {
-    //     enabled: true,
-    //   },
+      // automatic_payment_methods: {
+      //   enabled: true,
+      // },
+      receipt_email: customerEmail,
       metadata: {
         items: JSON.stringify(items.map((item: StripePaymentItem) => ({
           id: item.id,
+          productId: item.productId,
           name: item.name,
           quantity: item.quantity,
           price: item.price,
         }))),
+        email: customerEmail || "",
+        customerName: customerName || "",
       },
     })
 
