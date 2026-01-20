@@ -88,7 +88,7 @@ export async function sendOrderConfirmationEmail(
                 
                 <!-- Header -->
                 <tr>
-                  <td style="background-color: #3d485e; padding: 10px; text-align: center;">
+                  <td style="background-color: #3d485e !important; padding: 10px; text-align: center;">
                   <img width="90" height="90" alt="" src="https://www.glaze-hk.com/images/glaze-logo.png"/>
                   </td>
                 </tr>
@@ -181,7 +181,7 @@ export async function sendOrderConfirmationEmail(
   `;
 
   const result = await resend.emails.send({
-    from: process.env.RESEND_FROM_EMAIL || "Glaze Store <onboarding@resend.dev>",
+    from: process.env.RESEND_FROM_EMAIL || "Glaze 星琉 <order@glaze-hk.com>",
     to: email,
     subject: `訂單確認 - ${order.id.substring(0, 8)}`,
     html: emailHtml,
