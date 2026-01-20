@@ -167,12 +167,15 @@ export async function POST(req: NextRequest) {
       // Send confirmation email
       if (customerEmail && completeOrder) {
         try {
-          await sendOrderConfirmationEmail(
+          const emailResult = await sendOrderConfirmationEmail(
             customerEmail,
             customerName,
             completeOrder
           );
-          console.log(`Confirmation email sent to ${customerEmail}`);
+          if(emailResult){
+            console.log(`Confirmation email sent to ${customerEmail}`);
+          }
+          console.log(emailResult);
         } catch (emailError) {
           console.error("Error sending confirmation email:", emailError);
           // Don't fail the webhook if email fails
