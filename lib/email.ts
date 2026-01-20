@@ -89,7 +89,7 @@ export async function sendOrderConfirmationEmail(
                 <!-- Header -->
                 <tr>
                   <td style="background-color: #3d485e; padding: 10px; text-align: center;">
-                  <img width="90" height="90" alt="" src="https://cfhrkofmaexmonnieqxo.supabase.co/storage/v1/object/public/product-images/others/glaze-logo.png"/>
+                  <img width="90" height="90" alt="" src="cid:logo-image"/>
                   </td>
                 </tr>
                 
@@ -184,6 +184,11 @@ export async function sendOrderConfirmationEmail(
     to: email,
     subject: `訂單確認 - ${order.id}`,
     html: emailHtml,
+    attachments: [    {
+      path: 'https://cfhrkofmaexmonnieqxo.supabase.co/storage/v1/object/public/product-images/others/glaze-logo.png',
+      filename: 'glaze-logo.png',
+      contentId: 'logo-image',
+    },],
   });
 
   return result;
