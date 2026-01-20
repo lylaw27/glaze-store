@@ -111,7 +111,7 @@ export async function sendOrderConfirmationEmail(
                       <tr>
                         <td>
                           <h2 style="margin: 0 0 15px 0; font-size: 18px; color: #333;">訂單詳情</h2>
-                          <p style="margin: 0; color: #666;">訂單編號: <strong>${order.id.substring(0, 8)}</strong></p>
+                          <p style="margin: 0; color: #666;">訂單編號: <strong>#${order.id.substring(0, 8)}</strong></p>
                           <p style="margin: 5px 0 0 0; color: #666;">訂單日期: ${new Date(order.createdAt).toLocaleString("zh-HK", { 
                             year: "numeric",
                             month: "long",
@@ -183,7 +183,7 @@ export async function sendOrderConfirmationEmail(
   const result = await resend.emails.send({
     from: process.env.RESEND_FROM_EMAIL || "Glaze 星琉 <order@glaze-hk.com>",
     to: email,
-    subject: `訂單確認 - ${order.id.substring(0, 8)}`,
+    subject: `訂單確認 - #${order.id.substring(0, 8)}`,
     html: emailHtml,
     // attachments: [{
     //   path: 'https://cfhrkofmaexmonnieqxo.supabase.co/storage/v1/object/public/product-images/others/glaze-logo.png',
