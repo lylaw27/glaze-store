@@ -10,6 +10,25 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!;
 
+// Type for items stored in payment intent metadata
+interface PaymentIntentItem {
+  id: string;
+  productId: string;
+  name: string;
+  quantity: number;
+  price: number;
+}
+
+// Type for product data from Supabase
+interface ProductData {
+  id: string;
+  name: string;
+  price: number;
+  stock: number;
+  images: string;
+  status: string;
+}
+
 export async function POST(req: NextRequest) {
   const body = await req.text();
   const signature = req.headers.get("stripe-signature")!;
@@ -32,7 +51,7 @@ export async function POST(req: NextRequest) {
     console.log(`PaymentIntent for ${JSON.stringify(paymentIntent, null, 2)} succeeded.`);
     try {
       // Extract items and customer info from metadata
-      const items = JSON.parse(paymentIntent.metadata.items || "[]");
+      const items: PaymentIntentItem[] = JSON.parse(paymentIntent.metadata.items || "[]");
       const customerEmail = paymentIntent.receipt_email || paymentIntent.metadata.email;
       const customerName = paymentIntent.metadata.customerName || paymentIntent.shipping?.name || "Customer";
       const shippingAddress = paymentIntent.shipping?.address 
@@ -45,7 +64,7 @@ export async function POST(req: NextRequest) {
       }
 
       // Get all products for the order items
-      const productIds = items.map((item: any) => item.productId);
+      const productIds = items.map((item) => item.productId);
       const { data: products, error: productsError } = await supabaseAdmin
         .from("Product")
         .select("id, name, price, stock, images, status")
@@ -60,6 +79,8 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ received: true });
       }
 
+      const typedProducts = products as ProductData[];
+
       // Calculate total amount (convert from cents to HKD)
       const totalAmount = paymentIntent.amount / 100;
 
@@ -70,6 +91,7 @@ export async function POST(req: NextRequest) {
       // Create the order
       const { data: newOrder, error: orderError } = await supabaseAdmin
         .from("Order")
+        // @ts-expect-error - Supabase type generation issue
         .insert({
           id: orderId,
           customerName,
@@ -89,8 +111,8 @@ export async function POST(req: NextRequest) {
       }
 
       // Create order items
-      const orderItems = items.map((item: any) => {
-        const product = products.find((p) => p.id === item.productId);
+      const orderItems = items.map((item) => {
+        const product = typedProducts.find((p) => p.id === item.productId);
         return {
           id: uuidv4(),
           orderId,
@@ -102,6 +124,7 @@ export async function POST(req: NextRequest) {
 
       const { error: itemsError } = await supabaseAdmin
         .from("OrderItem")
+        // @ts-expect-error - Supabase type generation issue
         .insert(orderItems);
 
       if (itemsError) {
@@ -110,10 +133,11 @@ export async function POST(req: NextRequest) {
 
       // Update stock for each product
       for (const item of items) {
-        const product = products.find((p) => p.id === item.productId);
+        const product = typedProducts.find((p) => p.id === item.productId);
         if (product) {
           const { error: stockError } = await supabaseAdmin
             .from("Product")
+            // @ts-expect-error - Supabase type generation issue
             .update({ stock: product.stock - item.quantity })
             .eq("id", item.productId);
 

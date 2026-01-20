@@ -88,8 +88,9 @@ export async function sendOrderConfirmationEmail(
                 
                 <!-- Header -->
                 <tr>
-                  <td style="background-color: #000000; padding: 30px; text-align: center;">
-                    <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 600;">訂單確認</h1>
+                  <td style="background-color: #3d485e; padding: 10px; text-align: center;">
+                  <img width="90" height="90" src="/images/glaze-logo.png"/>
+                    <h1 style="color: #ffffff; font-size: 28px; font-weight: 600; ">🎊 訂單已確認 🎉</h1>
                   </td>
                 </tr>
                 

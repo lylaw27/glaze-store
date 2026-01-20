@@ -1,9 +1,10 @@
-import HeroSection from "./components/hero-carousel-section";
+// import HeroSection from "./components/hero-carousel-section";
 import HeroImageSection from "./components/hero-image-section";
 import Navbar from "./components/navbar";
 import ProductShowcase from "./components/product-showcase";
 import ProductGrid from "./components/product-grid";
-import { hero1, hero2, hero3, hero4,hero1m,hero2m, hero3m } from "./jsonFiles/heroContent";
+// import { hero1, hero2, hero3, hero4,hero1m,hero2m, hero3m } from "./jsonFiles/heroContent";
+import { hero1m,hero2m, hero3m } from "./jsonFiles/heroContent";
 import { categories } from "./jsonFiles/categories";
 import { imageText1, imageText2 } from "./jsonFiles/imagetext";
 import ImageTextSection from "./components/image-text-section";
