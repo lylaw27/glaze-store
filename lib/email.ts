@@ -89,14 +89,14 @@ export async function sendOrderConfirmationEmail(
                 <!-- Header -->
                 <tr>
                   <td style="background-color: #3d485e; padding: 10px; text-align: center;">
-                  <img width="90" height="90" src="https://cfhrkofmaexmonnieqxo.supabase.co/storage/v1/object/public/product-images/others/glaze-logo.png"/>
-                    <h1 style="color: #ffffff; font-size: 28px; font-weight: 600; ">🎊 訂單已確認 🎉</h1>
+                  <img width="90" height="90" alt="" src="https://cfhrkofmaexmonnieqxo.supabase.co/storage/v1/object/public/product-images/others/glaze-logo.png"/>
                   </td>
                 </tr>
                 
                 <!-- Greeting -->
                 <tr>
-                  <td style="padding: 30px;">
+                  <td style="padding: 20px 30px;">
+<h1 style="font-size: 28px; font-weight: 600; margin-bottom: 30px; text-align:center"> 訂單已完成! </h1>
                     <p style="margin: 0 0 20px 0; font-size: 16px; color: #333;">親愛的 ${customerName}，</p>
                     <p style="margin: 0 0 20px 0; font-size: 16px; color: #333;">
                       感謝您的購買！我們已收到您的訂單，並會盡快處理。
