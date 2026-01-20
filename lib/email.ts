@@ -89,7 +89,7 @@ export async function sendOrderConfirmationEmail(
                 <!-- Header -->
                 <tr>
                   <td style="background-color: #3d485e; padding: 10px; text-align: center;">
-                  <img width="90" height="90" alt="" src="cid:logo-image"/>
+                  <img width="90" height="90" alt="" src="https://www.glaze-hk.com/images/glaze-logo.png"/>
                   </td>
                 </tr>
                 
@@ -185,12 +185,12 @@ export async function sendOrderConfirmationEmail(
     to: email,
     subject: `訂單確認 - ${order.id.substring(0, 8)}`,
     html: emailHtml,
-    attachments: [    {
-      path: 'https://cfhrkofmaexmonnieqxo.supabase.co/storage/v1/object/public/product-images/others/glaze-logo.png',
-      filename: 'glaze-logo.png',
-      contentId: 'logo-image',
-    },],
+    // attachments: [{
+    //   path: 'https://cfhrkofmaexmonnieqxo.supabase.co/storage/v1/object/public/product-images/others/glaze-logo.png',
+    //   filename: 'glaze-logo.png',
+    //   contentId: 'logo-image',
+    // },],
   });
-
+  console.log(result)
   return result;
 }
