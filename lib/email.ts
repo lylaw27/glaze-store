@@ -84,10 +84,10 @@ export async function sendOrderConfirmationEmail(
         <title>訂單確認</title>
         <meta name="color-scheme" content="light dark">
         <meta name="supported-color-schemes" content="light dark">
+        <link href="https://fonts.googleapis.com" rel="stylesheet">	
         <style type="text/css">
           :root {
-            color-scheme: light dark;
-            supported-color-schemes: light dark;
+            font-family: 'Inter', sans-serif;
           }
           .banner {
             background-image: #3d485e !important;
@@ -109,18 +109,17 @@ export async function sendOrderConfirmationEmail(
                 
                 <!-- Greeting -->
                 <tr>
-                  <td style="padding: 20px 30px;">
+                  <td style="padding: 10px 30px;">
 <h1 style="font-size: 28px; font-weight: 600; margin-bottom: 30px; text-align:center"> 訂單已完成! </h1>
                     <p style="margin: 0 0 20px 0; font-size: 16px; color: #333;">親愛的 ${customerName}，</p>
-                    <p style="margin: 0 0 20px 0; font-size: 16px; color: #333;">
-                      感謝您的購買！我們已收到您的訂單，並會盡快處理。
-                    </p>
+                    <pre style="margin: 0 0 20px 0; font-size: 16px; color: #333;">感謝您在 Glaze 選購心儀的天然水晶飾品💙
+您的訂單已確認收到，我們正為您悉心準備商品。</pre>
                   </td>
                 </tr>
                 
                 <!-- Order Details -->
                 <tr>
-                  <td style="padding: 0 30px;">
+                  <td style="padding: 0 20px;">
                     <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #f9f9f9; border-radius: 8px; padding: 20px;">
                       <tr>
                         <td>
@@ -166,6 +165,7 @@ export async function sendOrderConfirmationEmail(
                   </td>
                 </tr>
                 
+                                
                 <!-- Shipping Address -->
                 <tr>
                   <td style="padding: 0 30px 30px 30px;">
@@ -173,6 +173,24 @@ export async function sendOrderConfirmationEmail(
                     <p style="margin: 0; color: #666; line-height: 1.6;">${order.customerAddress}</p>
                   </td>
                 </tr>
+                
+                <!-- Contact -->
+                <tr>
+                  <td style="padding: 0 30px 30px 30px;">
+                    <pre style="margin: 0; color: #666; line-height: 1.6; font-size: 14px;">🚚 配送與查詢
+▸ 商品出貨後，我們將通知您配送狀態。請確保收件資料正確。
+
+✨ 重要提醒
+▸ 天然水晶含有冰裂、棉絮等自然印記，屬正常現象，不影響能量與美感。
+▸ 所有商品已進行煙薰淨化。
+▸ 退換貨政策：商品恕不接受退換，但享有一年免費換線服務（客戶承擔來回運費）。
+
+如有任何問題，歡迎隨時透過 IG <a href="https://www.instagram.com/glaze.hk/">@glaze.hk</a> 或 Whatsapp <a href="https://wa.me/message/3DRWF4VYZGILF1">55439791</a> 與我們聯繫。
+
+感謝您的支持，願水晶為您帶來滿滿能量💖</pre>
+                  </td>
+                </tr>
+
                 
                 <!-- Footer -->
                 <tr>
