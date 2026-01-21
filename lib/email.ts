@@ -170,18 +170,21 @@ export async function sendOrderConfirmationEmail(
                 <tr>
                   <td style="padding: 0 30px 30px 30px;">
                     <h2 style="margin: 0 0 15px 0; font-size: 18px; color: #333;">送貨地址</h2>
-                    <p style="margin: 0; color: #666; line-height: 1.6;">${order.customerAddress}</p>
+                    <p style="margin: 0; color: #666; line-height: 1.6;">2座15樓A室，一號銀海，18 海輝道， 大角咀, 香港, , HK</p>
                   </td>
                 </tr>
                 
                 <!-- Contact -->
                 <tr>
                   <td style="padding: 0 30px 30px 30px;">
-                    <pre style="margin: 0; color: #666; line-height: 1.6; font-size: 14px;">🚚 配送與查詢
-▸ 商品出貨後，我們將通知您配送狀態。請確保收件資料正確。
+                    <p style="margin: 0;font-size: 18px; line-height: 1.6; color: #333;font-weight: 600;">配送與查詢 🚚
+                    </p>
+                    <pre style="margin: 0;font-size: 16px; line-height: 1.6; color: #666;">▸ 商品出貨後，我們將通知您配送狀態。請確保收件資料正確。
+                    </pre>
+                    <p style="margin: 0;font-size: 18px; line-height: 1.6; color: #333;font-weight: 600;">重要提醒 ✨
+                    </p>
 
-✨ 重要提醒
-▸ 天然水晶含有冰裂、棉絮等自然印記，屬正常現象，不影響能量與美感。
+                                        <pre style="margin: 0;font-size: 16px; line-height: 1.6; color: #666;">▸ 天然水晶含有冰裂、棉絮等自然印記，屬正常現象，不影響能量與美感。
 ▸ 所有商品已進行煙薰淨化。
 ▸ 退換貨政策：商品恕不接受退換，但享有一年免費換線服務（客戶承擔來回運費）。
 
