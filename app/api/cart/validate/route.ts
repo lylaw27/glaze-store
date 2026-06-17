@@ -1,4 +1,5 @@
-import { supabaseAdmin } from "@/lib/supabase";
+import { fetchQuery } from "convex/nextjs";
+import { api } from "@/convex/_generated/api";
 import { NextResponse } from "next/server";
 
 interface CartValidateItem {
@@ -8,15 +9,6 @@ interface CartValidateItem {
 
 interface CartValidateRequest {
   items: CartValidateItem[];
-}
-
-interface ProductQueryResult {
-  id: string;
-  name: string;
-  price: number;
-  stock: number;
-  status: string;
-  images: string;
 }
 
 interface ValidatedCartItem {
@@ -47,22 +39,19 @@ export async function POST(request: Request) {
     }
 
     const productIds = items.map((item) => item.productId);
-    const { data: products, error: productsError } = await supabaseAdmin
-      .from("Product")
-      .select("id, name, price, stock, status, images")
-      .in("id", productIds)
-      .eq("status", "active"); // Only validate active products
-
-    if (productsError) {
-      throw productsError;
-    }
+    const products = await fetchQuery(api.products.getByIds, {
+      ids: productIds,
+    });
 
     const validatedItems: ValidatedCartItem[] = [];
     let totalAmount = 0;
     const errors: string[] = [];
 
     for (const item of items) {
-      const product = (products as ProductQueryResult[])?.find((p: ProductQueryResult) => p.id === item.productId);
+      // Only validate active products (matches the old `.eq("status", "active")`).
+      const product = products.find(
+        (p) => p.id === item.productId && p.status === "active"
+      );
 
       if (!product) {
         errors.push(`Product not available: ${item.productId}`);
@@ -79,13 +68,12 @@ export async function POST(request: Request) {
       const itemTotal = product.price * item.quantity;
       totalAmount += itemTotal;
 
-      const images = JSON.parse(product.images);
       validatedItems.push({
         productId: product.id,
         name: product.name,
         price: product.price,
         quantity: item.quantity,
-        image: images[0] || null,
+        image: product.images[0] || null,
         itemTotal,
         availableStock: product.stock,
       });

@@ -1,5 +1,8 @@
-import { supabaseAdmin } from "@/lib/supabase";
+import { fetchMutation } from "convex/nextjs";
+import { api } from "@/convex/_generated/api";
 import { NextResponse } from "next/server";
+import { adminSecret } from "@/lib/convex";
+import type { Id } from "@/convex/_generated/dataModel";
 
 interface CategoryUpdateData {
   name: string;
@@ -11,60 +14,31 @@ interface RouteParams {
   params: Promise<{ id: string }>;
 }
 
-interface CategoryWithProducts {
-  id: string;
-  name: string;
-  handle: string;
-  type: string;
-  createdAt: string;
-  updatedAt: string;
-  products?: Array<{ count: number }>;
-}
-
 // DELETE category by ID
-export async function DELETE(
-  request: Request,
-  { params }: RouteParams
-) {
+export async function DELETE(request: Request, { params }: RouteParams) {
   try {
     const { id } = await params;
 
-    // Check if category exists and count products
-    const { data: category, error: fetchError } = await supabaseAdmin
-      .from("Category")
-      .select(`
-        *,
-        products:ProductCategory(count)
-      `)
-      .eq("id", id)
-      .single();
-
-    if (fetchError || !category) {
-      return NextResponse.json(
-        { error: "Category not found" },
-        { status: 404 }
-      );
+    try {
+      await fetchMutation(api.categories.remove, {
+        secret: adminSecret(),
+        id: id as Id<"categories">,
+      });
+      return NextResponse.json({ message: "Category deleted successfully" });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "";
+      if (message.includes("NOT_FOUND")) {
+        return NextResponse.json({ error: "Category not found" }, { status: 404 });
+      }
+      const inUse = message.match(/IN_USE:(\d+)/);
+      if (inUse) {
+        return NextResponse.json(
+          { error: `Cannot delete category. It is used by ${inUse[1]} product(s)` },
+          { status: 400 }
+        );
+      }
+      throw err;
     }
-
-    // Check if category is being used by any products
-    const productCount = (category as CategoryWithProducts).products?.[0]?.count || 0;
-    if (productCount > 0) {
-      return NextResponse.json(
-        { error: `Cannot delete category. It is used by ${productCount} product(s)` },
-        { status: 400 }
-      );
-    }
-
-    const { error: deleteError } = await supabaseAdmin
-      .from("Category")
-      .delete()
-      .eq("id", id);
-
-    if (deleteError) {
-      throw deleteError;
-    }
-
-    return NextResponse.json({ message: "Category deleted successfully" });
   } catch (error) {
     console.error("Error deleting category:", error);
     return NextResponse.json(
@@ -75,10 +49,7 @@ export async function DELETE(
 }
 
 // PUT update category by ID
-export async function PUT(
-  request: Request,
-  { params }: RouteParams
-) {
+export async function PUT(request: Request, { params }: RouteParams) {
   try {
     const { id } = await params;
     const body: CategoryUpdateData = await request.json();
@@ -91,40 +62,30 @@ export async function PUT(
       );
     }
 
-    const { data: category, error } = await supabaseAdmin
-      .from("Category")
-      // @ts-expect-error - Supabase type generation issue
-      .update({
-        name: name.trim(),
-        handle: handle.trim().toLowerCase(),
-        type: type.trim(),
-      })
-      .eq("id", id)
-      .select()
-      .single();
-
-    if (error) {
-      // Handle unique constraint violation
-      if (error.code === "23505") {
+    try {
+      const category = await fetchMutation(api.categories.update, {
+        secret: adminSecret(),
+        id: id as Id<"categories">,
+        name,
+        handle,
+        type,
+      });
+      return NextResponse.json(category);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "";
+      if (message.includes("DUPLICATE")) {
         return NextResponse.json(
           { error: "A category with this name already exists" },
           { status: 409 }
         );
       }
-      // Handle record not found
-      if (error.code === "PGRST116") {
-        return NextResponse.json(
-          { error: "Category not found" },
-          { status: 404 }
-        );
+      if (message.includes("NOT_FOUND")) {
+        return NextResponse.json({ error: "Category not found" }, { status: 404 });
       }
-      throw error;
+      throw err;
     }
-
-    return NextResponse.json(category);
   } catch (error) {
     console.error("Error updating category:", error);
-
     return NextResponse.json(
       { error: "Failed to update category" },
       { status: 500 }

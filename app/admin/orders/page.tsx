@@ -1,24 +1,12 @@
-import { supabaseAdmin } from "@/lib/supabase";
+import { fetchQuery, fetchMutation } from "convex/nextjs";
+import { api } from "@/convex/_generated/api";
 import { revalidatePath } from "next/cache";
+import { adminSecret } from "@/lib/convex";
+import type { Id } from "@/convex/_generated/dataModel";
 import OrderList from "./OrderList";
 
 async function getOrders() {
-  const { data: orders, error } = await supabaseAdmin
-    .from("Order")
-    .select(`
-      *,
-      items:OrderItem(
-        *,
-        product:Product(*)
-      )
-    `)
-    .order("createdAt", { ascending: false });
-
-  if (error) {
-    throw error;
-  }
-
-  return orders || [];
+  return await fetchQuery(api.orders.list, {});
 }
 
 export default async function OrdersPage() {
@@ -26,18 +14,14 @@ export default async function OrdersPage() {
 
   async function updateOrderStatus(formData: FormData) {
     "use server";
-    const id = formData.get("id") as string;
+    const id = formData.get("id") as Id<"orders">;
     const status = formData.get("status") as string;
 
-    const { error } = await supabaseAdmin
-      .from("Order")
-      // @ts-expect-error - Supabase type generation issue
-      .update({ status })
-      .eq("id", id);
-
-    if (error) {
-      throw error;
-    }
+    await fetchMutation(api.orders.updateStatus, {
+      secret: adminSecret(),
+      id,
+      status,
+    });
 
     revalidatePath("/admin/orders");
   }

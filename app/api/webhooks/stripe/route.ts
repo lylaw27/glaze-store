@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
-import { v4 as uuidv4 } from "uuid";
-import { supabaseAdmin } from "@/lib/supabase";
+import { fetchMutation } from "convex/nextjs";
+import { api } from "@/convex/_generated/api";
+import { adminSecret } from "@/lib/convex";
 import { sendOrderConfirmationEmail } from "@/lib/email";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
@@ -17,16 +18,6 @@ interface PaymentIntentItem {
   name: string;
   quantity: number;
   price: number;
-}
-
-// Type for product data from Supabase
-interface ProductData {
-  id: string;
-  name: string;
-  price: number;
-  stock: number;
-  images: string;
-  status: string;
 }
 
 export async function POST(req: NextRequest) {
@@ -54,7 +45,7 @@ export async function POST(req: NextRequest) {
       const items: PaymentIntentItem[] = JSON.parse(paymentIntent.metadata.items || "[]");
       const customerEmail = paymentIntent.receipt_email || paymentIntent.metadata.email;
       const customerName = paymentIntent.metadata.customerName || paymentIntent.shipping?.name || "Customer";
-      const shippingAddress = paymentIntent.shipping?.address 
+      const shippingAddress = paymentIntent.shipping?.address
         ? `${paymentIntent.shipping.address.line1}, ${paymentIntent.shipping.address.city}, ${paymentIntent.shipping.address.postal_code}${paymentIntent.shipping.address.country ? ', ' + paymentIntent.shipping.address.country : ''}`
         : paymentIntent.metadata.customerAddress || "No address provided";
 
@@ -63,106 +54,21 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ received: true });
       }
 
-      // Get all products for the order items
-      const productIds = items.map((item) => item.productId);
-      const { data: products, error: productsError } = await supabaseAdmin
-        .from("Product")
-        .select("id, name, price, stock, images, status")
-        .in("id", productIds);
-
-      if (productsError) {
-        throw productsError;
-      }
-
-      if (!products || products.length === 0) {
-        console.error("Products not found for order");
-        return NextResponse.json({ received: true });
-      }
-
-      const typedProducts = products as ProductData[];
-
-      // Calculate total amount (convert from cents to HKD)
-      const totalAmount = paymentIntent.amount / 100;
-
-      // Generate order ID
-      const orderId = uuidv4();
-      const now = new Date().toISOString();
-
-      // Create the order
-      const { data: newOrder, error: orderError } = await supabaseAdmin
-        .from("Order")
-        // @ts-expect-error - Supabase type generation issue
-        .insert({
-          id: orderId,
-          customerName,
-          customerEmail: customerEmail || "unknown@example.com",
-          customerAddress: shippingAddress,
-          paymentId: paymentIntent.id,
-          totalAmount,
-          status: "confirmed",
-          createdAt: now,
-          updatedAt: now,
-        })
-        .select()
-        .single();
-
-      if (orderError || !newOrder) {
-        throw orderError || new Error("Failed to create order");
-      }
-
-      // Create order items
-      const orderItems = items.map((item) => {
-        const product = typedProducts.find((p) => p.id === item.productId);
-        return {
-          id: uuidv4(),
-          orderId,
+      // Create the order, order items and stock decrement atomically, returning the
+      // complete order (with items + products) for the confirmation email.
+      const completeOrder = await fetchMutation(api.orders.createFromPayment, {
+        secret: adminSecret(),
+        customerName,
+        customerEmail: customerEmail || "unknown@example.com",
+        customerAddress: shippingAddress,
+        paymentId: paymentIntent.id,
+        totalAmount: paymentIntent.amount / 100, // cents -> HKD
+        items: items.map((item) => ({
           productId: item.productId,
           quantity: item.quantity,
-          price: product?.price || item.price,
-        };
+          price: item.price,
+        })),
       });
-
-      const { error: itemsError } = await supabaseAdmin
-        .from("OrderItem")
-        // @ts-expect-error - Supabase type generation issue
-        .insert(orderItems);
-
-      if (itemsError) {
-        throw itemsError;
-      }
-
-      // Update stock for each product
-      for (const item of items) {
-        const product = typedProducts.find((p) => p.id === item.productId);
-        if (product) {
-          const { error: stockError } = await supabaseAdmin
-            .from("Product")
-            // @ts-expect-error - Supabase type generation issue
-            .update({ stock: product.stock - item.quantity })
-            .eq("id", item.productId);
-
-          if (stockError) {
-            console.error("Error updating stock:", stockError);
-          }
-        }
-      }
-
-      // Fetch the complete order with items for email
-      const { data: completeOrder, error: fetchError } = await supabaseAdmin
-        .from("Order")
-        .select(`
-          *,
-          items:OrderItem(
-            *,
-            product:Product(*)
-          )
-        `)
-        .eq("id", orderId)
-        .single();
-
-      if (fetchError) {
-        console.error("Error fetching complete order:", fetchError);
-      }
 
       // Send confirmation email
       if (customerEmail && completeOrder) {
@@ -172,7 +78,7 @@ export async function POST(req: NextRequest) {
             customerName,
             completeOrder
           );
-          if(emailResult){
+          if (emailResult) {
             console.log(`Confirmation email sent to ${customerEmail}`);
           }
           console.log(emailResult);
@@ -182,14 +88,14 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      console.log(`Order ${orderId} created successfully for payment ${paymentIntent.id}`);
+      console.log(`Order ${completeOrder.id} created successfully for payment ${paymentIntent.id}`);
     } catch (error) {
       console.error("Error processing payment intent:", error);
       // Return 200 to acknowledge receipt even if processing failed
       // Stripe will retry failed webhooks
-      return NextResponse.json({ 
-        received: true, 
-        error: "Processing failed, will retry" 
+      return NextResponse.json({
+        received: true,
+        error: "Processing failed, will retry"
       });
     }
   }

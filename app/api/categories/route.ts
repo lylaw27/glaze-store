@@ -1,6 +1,7 @@
-import { supabaseAdmin } from "@/lib/supabase";
+import { fetchQuery, fetchMutation } from "convex/nextjs";
+import { api } from "@/convex/_generated/api";
 import { NextResponse } from "next/server";
-import type { CategoryWithCount } from "@/types";
+import { adminSecret } from "@/lib/convex";
 
 interface CategoryInsertData {
   name: string;
@@ -8,42 +9,11 @@ interface CategoryInsertData {
   type: string;
 }
 
-interface CategoryQueryResult {
-  id: string;
-  name: string;
-  handle: string;
-  type: string;
-  createdAt: string;
-  updatedAt: string;
-  products?: Array<{ count: number }>;
-}
-
 // GET all categories
 export async function GET() {
   try {
-    const { data: categories, error } = await supabaseAdmin
-      .from("Category")
-      .select(`
-        *,
-        products:ProductCategory(count)
-      `)
-      .order("name", { ascending: true });
-
-    if (error) {
-      throw error;
-    }
-
-    // Format to match expected structure
-    const formattedCategories: CategoryWithCount[] = (categories || []).map((cat: CategoryQueryResult) => ({
-      ...cat,
-      createdAt: new Date(cat.createdAt),
-      updatedAt: new Date(cat.updatedAt),
-      _count: {
-        products: cat.products?.length || 0,
-      },
-    }));
-
-    return NextResponse.json(formattedCategories);
+    const categories = await fetchQuery(api.categories.list, {});
+    return NextResponse.json(categories);
   } catch (error) {
     console.error("Error fetching categories:", error);
     return NextResponse.json(
@@ -66,32 +36,25 @@ export async function POST(request: Request) {
       );
     }
 
-    const { data: category, error } = await supabaseAdmin
-      .from("Category")
-      // @ts-expect-error - Supabase type generation issue
-      .insert({
-        name: name.trim(),
-        handle: handle.trim().toLowerCase(),
-        type: type.trim(),
-      })
-      .select()
-      .single();
-
-    if (error) {
-      // Handle unique constraint violation
-      if (error.code === "23505") {
+    try {
+      const category = await fetchMutation(api.categories.create, {
+        secret: adminSecret(),
+        name,
+        handle,
+        type,
+      });
+      return NextResponse.json(category, { status: 201 });
+    } catch (err) {
+      if (err instanceof Error && err.message.includes("DUPLICATE")) {
         return NextResponse.json(
           { error: "A category with this name already exists" },
           { status: 409 }
         );
       }
-      throw error;
+      throw err;
     }
-
-    return NextResponse.json(category, { status: 201 });
   } catch (error) {
     console.error("Error creating category:", error);
-
     return NextResponse.json(
       { error: "Failed to create category" },
       { status: 500 }

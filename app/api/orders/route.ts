@@ -1,5 +1,7 @@
-import { supabaseAdmin } from "@/lib/supabase";
+import { fetchQuery, fetchMutation } from "convex/nextjs";
+import { api } from "@/convex/_generated/api";
 import { NextResponse } from "next/server";
+import { adminSecret } from "@/lib/convex";
 
 interface OrderItemInput {
   productId: string;
@@ -12,22 +14,6 @@ interface CreateOrderRequest {
   customerAddress: string;
   paymentId?: string;
   items: OrderItemInput[];
-}
-
-interface ProductQueryResult {
-  id: string;
-  name: string;
-  price: number;
-  stock: number;
-  images: string;
-  status: string;
-}
-
-interface OrderItemInsertData {
-  orderId: string;
-  productId: string;
-  quantity: number;
-  price: number;
 }
 
 // POST /api/orders - Create a new order (after payment confirmation)
@@ -55,113 +41,40 @@ export async function POST(request: Request) {
       );
     }
 
-    // Get all products for the order items
-    const productIds = items.map((item) => item.productId);
-    const { data: products, error: productsError } = await supabaseAdmin
-      .from("Product")
-      .select("id, name, price, stock, images, status")
-      .in("id", productIds);
-
-    if (productsError) {
-      throw productsError;
-    }
-
-    // Validate all products exist and have sufficient stock
-    for (const item of items) {
-      const product = (products as ProductQueryResult[])?.find((p) => p.id === item.productId);
-      if (!product) {
-        return NextResponse.json(
-          { error: `Product not found: ${item.productId}` },
-          { status: 400 }
-        );
-      }
-      if (product.stock < item.quantity) {
-        return NextResponse.json(
-          { error: `Insufficient stock for: ${product.name}` },
-          { status: 400 }
-        );
-      }
-    }
-
-    // Calculate total amount
-    const totalAmount = items.reduce((sum, item) => {
-      const product = (products as ProductQueryResult[]).find((p) => p.id === item.productId)!;
-      return sum + product.price * item.quantity;
-    }, 0);
-
-    // Create the order
-    const { data: newOrder, error: orderError } = await supabaseAdmin
-      .from("Order")
-      // @ts-expect-error - Supabase type generation issue
-      .insert({
+    try {
+      // Validation (existence + stock), order/items insert and stock decrement all
+      // happen atomically inside the Convex mutation.
+      const completeOrder = await fetchMutation(api.orders.create, {
+        secret: adminSecret(),
         customerName,
         customerEmail,
         customerAddress,
-        paymentId: paymentId || null,
-        totalAmount,
-        status: "confirmed",
-      })
-      .select()
-      .single();
+        paymentId: paymentId || undefined,
+        items: items.map((item) => ({
+          productId: item.productId,
+          quantity: item.quantity,
+        })),
+      });
 
-    if (orderError || !newOrder) {
-      throw orderError || new Error("Failed to create order");
-    }
-
-    const orderId = (newOrder as { id: string }).id;
-
-    // Create order items
-    const orderItems: OrderItemInsertData[] = items.map((item) => {
-      const product = (products as ProductQueryResult[]).find((p) => p.id === item.productId)!;
-      return {
-        orderId,
-        productId: item.productId,
-        quantity: item.quantity,
-        price: product.price,
-      };
-    });
-
-    const { error: itemsError } = await supabaseAdmin
-      .from("OrderItem")
-      // @ts-expect-error - Supabase type generation issue
-      .insert(orderItems);
-
-    if (itemsError) {
-      throw itemsError;
-    }
-
-    // Update stock for each product
-    for (const item of items) {
-      const product = (products as ProductQueryResult[]).find((p) => p.id === item.productId)!;
-      const { error: stockError } = await supabaseAdmin
-        .from("Product")
-        // @ts-expect-error - Supabase type generation issue
-        .update({ stock: product.stock - item.quantity })
-        .eq("id", item.productId);
-
-      if (stockError) {
-        throw stockError;
+      return NextResponse.json(completeOrder, { status: 201 });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "";
+      const notFound = message.match(/PRODUCT_NOT_FOUND:(.+)/);
+      if (notFound) {
+        return NextResponse.json(
+          { error: `Product not found: ${notFound[1]}` },
+          { status: 400 }
+        );
       }
+      const lowStock = message.match(/INSUFFICIENT_STOCK:(.+)/);
+      if (lowStock) {
+        return NextResponse.json(
+          { error: `Insufficient stock for: ${lowStock[1]}` },
+          { status: 400 }
+        );
+      }
+      throw err;
     }
-
-    // Fetch the complete order with items
-    const { data: completeOrder, error: fetchError } = await supabaseAdmin
-      .from("Order")
-      .select(`
-        *,
-        items:OrderItem(
-          *,
-          product:Product(*)
-        )
-      `)
-      .eq("id", orderId)
-      .single();
-
-    if (fetchError) {
-      throw fetchError;
-    }
-
-    return NextResponse.json(completeOrder, { status: 201 });
   } catch (error) {
     console.error("Error creating order:", error);
     return NextResponse.json(
@@ -177,28 +90,11 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const paymentId = searchParams.get("paymentId");
 
-    let query = supabaseAdmin
-      .from("Order")
-      .select(`
-        *,
-        items:OrderItem(
-          *,
-          product:Product(*)
-        )
-      `)
-      .order("createdAt", { ascending: false });
+    const orders = await fetchQuery(api.orders.list, {
+      paymentId: paymentId ?? undefined,
+    });
 
-    if (paymentId) {
-      query = query.eq("paymentId", paymentId);
-    }
-
-    const { data: orders, error } = await query;
-
-    if (error) {
-      throw error;
-    }
-
-    return NextResponse.json(orders || []);
+    return NextResponse.json(orders);
   } catch (error) {
     console.error("Error fetching orders:", error);
     return NextResponse.json(

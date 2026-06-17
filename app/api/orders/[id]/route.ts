@@ -1,4 +1,5 @@
-import { supabaseAdmin } from "@/lib/supabase";
+import { fetchQuery } from "convex/nextjs";
+import { api } from "@/convex/_generated/api";
 import { NextResponse } from "next/server";
 
 interface RouteParams {
@@ -6,30 +7,13 @@ interface RouteParams {
 }
 
 // GET /api/orders/[id] - Get a single order by ID (for order confirmation/tracking)
-export async function GET(
-  request: Request,
-  { params }: RouteParams
-) {
+export async function GET(request: Request, { params }: RouteParams) {
   try {
     const { id } = await params;
 
-    const { data: order, error } = await supabaseAdmin
-      .from("Order")
-      .select(`
-        *,
-        items:OrderItem(
-          *,
-          product:Product(
-            id,
-            name,
-            images
-          )
-        )
-      `)
-      .eq("id", id)
-      .single();
+    const order = await fetchQuery(api.orders.getById, { id });
 
-    if (error || !order) {
+    if (!order) {
       return NextResponse.json({ error: "Order not found" }, { status: 404 });
     }
 

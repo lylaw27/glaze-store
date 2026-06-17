@@ -9,7 +9,7 @@ interface OrderItem {
   product: {
     id: string;
     name: string;
-    image: string | null;
+    images: string;
   };
 }
 
@@ -21,7 +21,7 @@ interface Order {
   totalAmount: number;
   status: string;
   paymentId: string | null;
-  createdAt: Date;
+  createdAt: string;
   items: OrderItem[];
 }
 
