@@ -104,7 +104,7 @@ function CheckoutSuccessContent() {
             <div className="space-y-2 mb-4">
               <div className="flex justify-between text-sm">
                 <span className="text-gray-600">訂單編號:</span>
-                <span className="font-medium">{order.id}</span>
+                <span className="font-medium">#{order.id.substring(0, 8)}</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-gray-600">訂單日期:</span>
