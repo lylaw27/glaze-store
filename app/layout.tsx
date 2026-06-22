@@ -1,21 +1,10 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { CartProvider } from "./cartProvider";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
 export const metadata: Metadata = {
-  title: "GlazeStore Admin",
-  description: "Admin dashboard for GlazeStore",
+  title: "Glaze HK — 能量水晶與銀飾",
+  description: "Glaze HK 精選天然水晶與925純銀、14K鍍金飾品。",
 };
 
 export default function RootLayout({
@@ -24,10 +13,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
+    <html lang="zh-HK">
+      <body className="antialiased">
         <CartProvider>
           {children}
         </CartProvider>

@@ -132,26 +132,26 @@ export default function CollectionGrid(
       <div className="flex items-center justify-between gap-3 mb-6">
         <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
           <SheetTrigger asChild>
-            <Button variant="outline" className="bg-transparent">
-              <SlidersHorizontal className="h-4 w-4" />
-              篩選條件
-            </Button>
+            <button className="inline-flex items-center gap-2 font-sans text-xs tracking-[0.15em] uppercase text-foreground hover:opacity-60 transition-opacity">
+              <SlidersHorizontal className="h-4 w-4" strokeWidth={1.25} />
+              篩選條件 +
+            </button>
           </SheetTrigger>
           <SheetContent side="left" className="w-[92vw] sm:w-[420px]">
             <SheetHeader>
-              <SheetTitle>篩選條件</SheetTitle>
+              <SheetTitle className="font-serif text-xl font-normal">篩選條件</SheetTitle>
             </SheetHeader>
 
             <div className="mt-6 space-y-8 px-6">
               {/* Categories */}
               {Object.entries(categoriesList).map(([type, categories]) => (
                 <div key={type}>
-                  <div className="mb-3 text-sm font-medium">{type}</div>
+                  <div className="mb-3 font-serif italic text-base text-foreground">{type}</div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {categories.map(({ handle, name }) => (
                       <label
                         key={handle}
-                        className="flex items-center gap-3 rounded-md border p-3 hover:bg-gray-50 cursor-pointer"
+                        className="flex items-center gap-3 border border-border p-3 hover:bg-muted cursor-pointer transition-colors"
                       >
                         <Checkbox checked={selectedCats.includes(handle)} onCheckedChange={() => toggleCat(handle)} />
                         <span className="text-sm">{name}</span>
@@ -162,7 +162,7 @@ export default function CollectionGrid(
               ))}
               {/* Price */}
               <div>
-                <div className="mb-3 text-sm font-medium">價格範圍</div>
+                <div className="mb-3 font-serif italic text-base text-foreground">價格範圍</div>
                 <div className="px-1">
                   <Slider
                     value={priceRange}
@@ -192,8 +192,8 @@ export default function CollectionGrid(
         </Sheet>
 
         {/* Sort */}
-        <div className="ml-auto">
-          <Label htmlFor="sort" className="sr-only">
+        <div className="ml-auto flex items-center gap-2">
+          <Label htmlFor="sort" className="text-xs tracking-[0.15em] uppercase text-muted-foreground hidden sm:inline">
             排序
           </Label>
           <Select
@@ -202,7 +202,7 @@ export default function CollectionGrid(
               setSort(v as typeof sort)
             }}
           >
-            <SelectTrigger id="sort" className="w-[140px]">
+            <SelectTrigger id="sort" className="w-auto gap-2 border-0 shadow-none px-0 text-xs tracking-[0.15em] uppercase focus-visible:ring-0">
               <SelectValue placeholder="精選" />
             </SelectTrigger>
             <SelectContent>
@@ -215,25 +215,25 @@ export default function CollectionGrid(
       </div>
 
       {/* Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-10 sm:gap-x-6">
         {allProducts.map((p: ProductWithParsedFields) => (
           <Link
             key={p.id}
             href={"/products/"+ p.handle}
-            className="group rounded-lg overflow-hidden bg-white ring-1 ring-gray-200 hover:ring-gray-300 transition"
+            className="group"
           >
-            <div className="relative aspect-square bg-gray-50">
+            <div className="relative aspect-square bg-muted overflow-hidden">
               <Image
                 src={p.images[0] || "/placeholder.svg?height=600&width=600&query=product%20image"}
                 alt={p.name}
                 fill
-                className="object-cover transition-transform duration-300 group-hover:scale-[1.03]"
-                sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+                sizes="(max-width: 640px) 50vw, (max-width: 1024px) 50vw, 33vw"
               />
             </div>
-            <div className="p-3 sm:p-4">
-              <h3 className="text-sm sm:text-[0.95rem] font-medium text-gray-900 line-clamp-2">{p.name}</h3>
-              <div className="mt-2 text-xs sm:text-sm text-gray-700">{currency(p.price)} 起</div>
+            <div className="pt-3">
+              <h3 className="font-serif text-base text-foreground line-clamp-1">{p.name}</h3>
+              <div className="mt-1 text-sm text-muted-foreground">{currency(p.price)} 起</div>
             </div>
           </Link>
         ))}

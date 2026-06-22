@@ -22,14 +22,31 @@ export default defineSchema({
     price: v.number(),
     stock: v.number(),
     status: v.string(), // "active" | "hidden"
-    // Each image keeps its storage id (for deletion) and served URL (for display).
+    // Each image references a stored file (owned by the gallery) plus its served URL.
+    // The array order is authoritative for the storefront image showcase.
     images: v.array(
       v.object({ storageId: v.id("_storage"), url: v.string() })
     ),
+    // Admin-controlled sort order for the storefront showcase / default listing.
+    // Optional so existing rows validate; backfillPositions assigns values once.
+    position: v.optional(v.number()),
     updatedAt: v.number(),
   })
     .index("by_handle", ["handle"])
-    .index("by_status", ["status"]),
+    .index("by_status", ["status"])
+    .index("by_position", ["position"]),
+
+  // Central image library. Admins bulk-upload (client-compressed) images here, then pick
+  // them in the product form. Gallery rows own the underlying storage files.
+  galleryImages: defineTable({
+    storageId: v.id("_storage"),
+    url: v.string(),
+    name: v.string(), // original filename
+    size: v.number(), // bytes after compression
+    width: v.optional(v.number()),
+    height: v.optional(v.number()),
+    updatedAt: v.number(),
+  }).index("by_storage", ["storageId"]),
 
   productCategories: defineTable({
     productId: v.id("products"),

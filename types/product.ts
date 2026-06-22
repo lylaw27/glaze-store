@@ -77,7 +77,7 @@ export interface Product {
   price: number;
   stock: number;
   status: string;
-  images: string; // JSON stringified array of image URLs
+  images: string; // JSON stringified array of ProductImageRef ({ storageId, url }), in display order
   categories?: ProductCategory[];
   variants?: ProductVariant[];
   addOns?: ProductAddOn[];
@@ -95,6 +95,25 @@ export interface ImageItem {
   url: string;
   file?: File;
   isNew?: boolean;
+}
+
+// A reference to a gallery image stored on a product (admin shape).
+// Product.images (admin) is a JSON string of these objects, in display order.
+export interface ProductImageRef {
+  storageId: string;
+  url: string;
+}
+
+// An image in the central gallery (returned by api.gallery.list).
+export interface GalleryImage {
+  id: string;
+  storageId: string;
+  url: string;
+  name: string;
+  size: number;
+  width: number | null;
+  height: number | null;
+  createdAt: number;
 }
 
 // Parsed product with images and categories as arrays

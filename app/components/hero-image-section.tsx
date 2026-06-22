@@ -27,7 +27,7 @@ export default function HeroImageSection({slide}: { slide: HeroSlide }) {
               <div className="relative z-10 container mx-auto px-4">
                 <div className="max-w-2xl">
                   {/* Main Heading */}
-                  <h1 className="md:text-6xl text-5xl font-light text-white mb-6 leading-tight animate-fade-in">
+                  <h1 className="font-serif md:text-7xl text-5xl font-light text-white mb-6 leading-[1.05] animate-fade-in">
                     {slide.title}
                   </h1>
 
@@ -40,7 +40,7 @@ export default function HeroImageSection({slide}: { slide: HeroSlide }) {
                   <Button
                     variant="outline"
                     size="lg"
-                    className="bg-transparent border-2 border-white text-white hover:bg-white hover:text-gray-900 px-8 py-3 text-lg font-light animate-fade-in-delay-2"
+                    className="bg-transparent border border-white text-white hover:bg-white hover:text-foreground px-8 py-5 text-xs tracking-[0.2em] uppercase font-normal shadow-none animate-fade-in-delay-2"
                   >
                     {slide.buttonText}
                   </Button>

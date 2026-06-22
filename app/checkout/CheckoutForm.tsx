@@ -64,12 +64,12 @@ export default function CheckoutForm() {
   return (
     <form onSubmit={handleSubmit} className="space-y-8">
       {/* Order Summary */}
-      <div className="bg-gray-50 rounded-lg p-6">
-        <h2 className="text-lg font-semibold mb-4">訂單摘要</h2>
+      <div className="bg-muted p-6">
+        <h2 className="font-serif text-lg font-normal mb-4">訂單摘要</h2>
         <div className="space-y-4">
           {cart.items.map((item) => (
             <div key={item.id} className="flex items-start gap-4">
-              <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-md">
+              <div className="relative h-16 w-16 shrink-0 overflow-hidden border border-border bg-background">
                 <Image
                   src={item.image || "/placeholder.svg"}
                   alt={item.name}
@@ -78,9 +78,9 @@ export default function CheckoutForm() {
                 />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900 truncate">{item.name}</p>
+                <p className="font-serif text-base text-foreground truncate">{item.name}</p>
                 {item.variants && Object.keys(item.variants).length > 0 && (
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-muted-foreground">
                     {Object.entries(item.variants).map(([key, value]) => (
                       <span key={key} className="mr-2">
                         {key}: {value}
@@ -88,18 +88,18 @@ export default function CheckoutForm() {
                     ))}
                   </p>
                 )}
-                <p className="text-xs text-gray-500">數量: {item.quantity}</p>
+                <p className="text-xs text-muted-foreground">數量: {item.quantity}</p>
               </div>
-              <div className="text-sm font-medium text-gray-900">
+              <div className="text-sm text-foreground">
                 {fmt(item.price * item.quantity)}
               </div>
             </div>
           ))}
         </div>
-        <div className="mt-6 pt-6 border-t border-gray-200">
-          <div className="flex items-center justify-between text-base font-semibold">
-            <span>總計</span>
-            <span>{fmt(getCartTotal())}</span>
+        <div className="mt-6 pt-6 border-t border-border">
+          <div className="flex items-center justify-between text-base">
+            <span className="tracking-wide">總計</span>
+            <span className="font-serif text-lg">{fmt(getCartTotal())}</span>
           </div>
         </div>
       </div>
@@ -153,16 +153,16 @@ export default function CheckoutForm() {
       {/* Divider */}
       <div className="relative">
         <div className="absolute inset-0 flex items-center">
-          <div className="w-full border-t border-gray-300"></div>
+          <div className="w-full border-t border-border"></div>
         </div>
         <div className="relative flex justify-center text-sm">
-          <span className="px-4 bg-white text-gray-500">或使用其他付款方式</span>
+          <span className="px-4 bg-card text-muted-foreground">或使用其他付款方式</span>
         </div>
       </div>
 
       {/* Payment Method - includes Express Checkout (Apple Pay, Google Pay) */}
       <div>
-        <h2 className="text-lg font-semibold mb-4">付款方式</h2>
+        <h2 className="font-serif text-lg font-normal mb-4">付款方式</h2>
         <PaymentElement
           options={{
             layout: "accordion",
@@ -173,7 +173,7 @@ export default function CheckoutForm() {
 
       {/* Shipping Address */}
       <div>
-        <h2 className="text-lg font-semibold mb-4">送貨地址</h2>
+        <h2 className="font-serif text-lg font-normal mb-4">送貨地址</h2>
         <AddressElement
           options={{
             mode: "shipping",
@@ -198,11 +198,11 @@ export default function CheckoutForm() {
       <Button
         disabled={isLoading || !stripe || !elements}
         type="submit"
-        className="w-full bg-black text-white hover:bg-black/90 py-6 text-base"
+        className="w-full bg-primary text-primary-foreground hover:bg-primary/90 py-6 text-xs tracking-[0.2em] uppercase rounded-none shadow-none"
       >
         {isLoading ? (
           <div className="flex items-center justify-center gap-2">
-            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary-foreground"></div>
             <span>處理中...</span>
           </div>
         ) : (
@@ -210,7 +210,7 @@ export default function CheckoutForm() {
         )}
       </Button>
 
-      <p className="text-xs text-gray-500 text-center">
+      <p className="text-xs text-muted-foreground text-center">
         點擊「立即付款」即表示您同意我們的條款和條件
       </p>
     </form>

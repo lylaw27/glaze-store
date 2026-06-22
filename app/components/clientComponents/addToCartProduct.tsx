@@ -61,10 +61,9 @@ export default function AddToCartButton({
     return (
         <Button
             onClick={handleAddToCart}
-            variant="outline"
             disabled={disabled || text !== "加入購物車"}
             size="lg"
-            className="w-full text-white h-12 font-medium bg-[#5A31F4] hover:bg-[#4C28D4] hover:text-white"
+            className="w-full h-13 text-xs tracking-[0.2em] uppercase bg-primary text-primary-foreground hover:bg-primary/90 shadow-none rounded-none disabled:opacity-50"
         >
             {text}
         </Button>

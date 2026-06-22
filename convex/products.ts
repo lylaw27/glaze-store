@@ -7,6 +7,15 @@ const variantOptionsValidator = v.array(
   v.object({ name: v.string(), values: v.array(v.string()) })
 );
 
+// Sort by admin-assigned position ascending; un-positioned rows fall to the end,
+// tiebroken newest-first. Used for the storefront default order and admin list.
+function byPosition(a: Doc<"products">, b: Doc<"products">): number {
+  const pa = a.position ?? Number.MAX_SAFE_INTEGER;
+  const pb = b.position ?? Number.MAX_SAFE_INTEGER;
+  if (pa !== pb) return pa - pb;
+  return b._creationTime - a._creationTime;
+}
+
 // ---------------------------------------------------------------------------
 // Shaping helpers — return the exact JSON shapes the existing consumers expect.
 // ---------------------------------------------------------------------------
@@ -143,7 +152,9 @@ async function shapeAdmin(ctx: QueryCtx, product: Doc<"products">) {
         price: ap.price,
         stock: ap.stock,
         status: ap.status,
-        images: JSON.stringify(ap.images.map((i) => i.url)),
+        // Admin shape keeps the full {storageId, url} objects so the form can
+        // reorder images and reference the gallery files they came from.
+        images: JSON.stringify(ap.images),
         createdAt: toIso(ap._creationTime),
         updatedAt: toIso(ap.updatedAt),
       },
@@ -158,7 +169,7 @@ async function shapeAdmin(ctx: QueryCtx, product: Doc<"products">) {
     price: product.price,
     stock: product.stock,
     status: product.status,
-    images: JSON.stringify(product.images.map((i) => i.url)),
+    images: JSON.stringify(product.images),
     createdAt: toIso(product._creationTime),
     updatedAt: toIso(product.updatedAt),
     categories,
@@ -205,7 +216,7 @@ export const list = query({
 
     if (args.sort === "price-asc") products.sort((a, b) => a.price - b.price);
     else if (args.sort === "price-desc") products.sort((a, b) => b.price - a.price);
-    else products.sort((a, b) => b._creationTime - a._creationTime);
+    else products.sort(byPosition); // default / "featured" = admin drag order
 
     let shaped = await Promise.all(products.map((p) => shapeStorefront(ctx, p)));
 
@@ -261,7 +272,7 @@ export const listForAdmin = query({
   handler: async (ctx, args) => {
     assertAdmin(args.secret);
     const products = await ctx.db.query("products").collect();
-    products.sort((a, b) => b._creationTime - a._creationTime);
+    products.sort(byPosition);
     return await Promise.all(products.map((p) => shapeAdmin(ctx, p)));
   },
 });
@@ -288,11 +299,19 @@ export const create = mutation({
     assertAdmin(args.secret);
     const now = Date.now();
 
+    // Images are gallery files chosen in the form; keep the given order.
     const images = [];
     for (const storageId of args.imageStorageIds) {
       const url = await ctx.storage.getUrl(storageId);
       if (url) images.push({ storageId, url });
     }
+
+    // Append to the end of the admin sort order.
+    const all = await ctx.db.query("products").collect();
+    const maxPosition = all.reduce(
+      (max, p) => Math.max(max, p.position ?? -1),
+      -1
+    );
 
     const productId = await ctx.db.insert("products", {
       name: args.name,
@@ -302,6 +321,7 @@ export const create = mutation({
       stock: args.stock,
       status: args.status,
       images,
+      position: maxPosition + 1,
       updatedAt: now,
     });
 
@@ -333,8 +353,7 @@ export const update = mutation({
     price: v.number(),
     stock: v.number(),
     status: v.string(),
-    keepUrls: v.array(v.string()), // existing image URLs to keep
-    newImageStorageIds: v.array(v.id("_storage")),
+    imageStorageIds: v.array(v.id("_storage")), // full ordered image set
     categoryIds: v.array(v.id("categories")),
     variantOptions: variantOptionsValidator,
     addOnProductIds: v.array(v.id("products")),
@@ -345,13 +364,10 @@ export const update = mutation({
     const product = await ctx.db.get(args.id);
     if (!product) throw new Error("Product not found");
 
-    // Keep images whose URL is still selected; delete the dropped ones; append new.
+    // The form sends the full desired image set in order (gallery files). Rebuild
+    // the array from it; do NOT delete storage — the gallery owns those files.
     const images = [];
-    for (const img of product.images) {
-      if (args.keepUrls.includes(img.url)) images.push(img);
-      else await ctx.storage.delete(img.storageId);
-    }
-    for (const storageId of args.newImageStorageIds) {
+    for (const storageId of args.imageStorageIds) {
       const url = await ctx.storage.getUrl(storageId);
       if (url) images.push({ storageId, url });
     }
@@ -421,7 +437,7 @@ export const remove = mutation({
     const product = await ctx.db.get(args.id);
     if (!product) return;
 
-    for (const img of product.images) await ctx.storage.delete(img.storageId);
+    // Images are gallery-owned files; deleting the product only drops the links.
 
     const pcs = await ctx.db
       .query("productCategories")
@@ -448,5 +464,33 @@ export const remove = mutation({
     }
 
     await ctx.db.delete(args.id);
+  },
+});
+
+// Persist a new admin drag order: each id's array index becomes its position.
+export const reorder = mutation({
+  args: { secret: v.string(), orderedIds: v.array(v.id("products")) },
+  handler: async (ctx, args) => {
+    assertAdmin(args.secret);
+    for (let i = 0; i < args.orderedIds.length; i++) {
+      await ctx.db.patch(args.orderedIds[i], { position: i });
+    }
+  },
+});
+
+// One-time: assign sequential positions to any products that lack one, using the
+// previous newest-first order. Safe to re-run. Invoke via `npx convex run`.
+export const backfillPositions = mutation({
+  args: { secret: v.string() },
+  handler: async (ctx, args) => {
+    assertAdmin(args.secret);
+    const products = await ctx.db.query("products").collect();
+    products.sort(byPosition); // already-positioned rows keep their relative order
+    for (let i = 0; i < products.length; i++) {
+      if (products[i].position !== i) {
+        await ctx.db.patch(products[i]._id, { position: i });
+      }
+    }
+    return { updated: products.length };
   },
 });

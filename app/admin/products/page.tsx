@@ -1,8 +1,9 @@
 import { fetchQuery, fetchMutation } from "convex/nextjs";
 import { api } from "@/convex/_generated/api";
 import { revalidatePath } from "next/cache";
-import { adminSecret, uploadImageToConvex } from "@/lib/convex";
+import { adminSecret } from "@/lib/convex";
 import type { Id } from "@/convex/_generated/dataModel";
+import type { GalleryImage } from "@/types/product";
 import ProductList from "./ProductList";
 import ProductForm from "./ProductForm";
 import { AdminProduct } from "@/types";
@@ -14,8 +15,16 @@ async function getProducts(): Promise<AdminProduct[]> {
   return products as unknown as AdminProduct[];
 }
 
+async function getGallery(): Promise<GalleryImage[]> {
+  const images = await fetchQuery(api.gallery.list, { secret: adminSecret() });
+  return images as unknown as GalleryImage[];
+}
+
 export default async function ProductsPage() {
-  const products = await getProducts();
+  const [products, galleryImages] = await Promise.all([
+    getProducts(),
+    getGallery(),
+  ]);
 
   async function createProduct(formData: FormData) {
     "use server";
@@ -25,7 +34,6 @@ export default async function ProductsPage() {
     const price = parseFloat(formData.get("price") as string);
     const stock = parseInt(formData.get("stock") as string);
     const status = (formData.get("status") as string) || "active";
-    const newImageCount = parseInt(formData.get("newImageCount") as string) || 0;
     const categoryIds = JSON.parse(
       (formData.get("categoryIds") as string) || "[]"
     ) as Id<"categories">[];
@@ -36,14 +44,10 @@ export default async function ProductsPage() {
       (formData.get("addOnProductIds") as string) || "[]"
     ) as Id<"products">[];
 
-    // Upload new images to Convex storage and collect their storage ids
-    const imageStorageIds: Id<"_storage">[] = [];
-    for (let i = 0; i < newImageCount; i++) {
-      const imageFile = formData.get(`imageFile-${i}`) as File | null;
-      if (imageFile && imageFile.size > 0) {
-        imageStorageIds.push(await uploadImageToConvex(imageFile));
-      }
-    }
+    // Images are gallery files chosen in the form; the form sends ordered storage ids.
+    const imageStorageIds = JSON.parse(
+      (formData.get("imageStorageIds") as string) || "[]"
+    ) as Id<"_storage">[];
 
     await fetchMutation(api.products.create, {
       secret: adminSecret(),
@@ -60,6 +64,8 @@ export default async function ProductsPage() {
     });
 
     revalidatePath("/admin/products");
+    revalidatePath("/");
+    revalidatePath("/products");
   }
 
   async function updateProduct(formData: FormData) {
@@ -71,11 +77,6 @@ export default async function ProductsPage() {
     const price = parseFloat(formData.get("price") as string);
     const stock = parseInt(formData.get("stock") as string);
     const status = (formData.get("status") as string) || "active";
-    const newImageCount = parseInt(formData.get("newImageCount") as string) || 0;
-    // URLs of existing images the user kept; the mutation deletes the dropped ones.
-    const keepUrls = JSON.parse(
-      (formData.get("existingImages") as string) || "[]"
-    ) as string[];
     const categoryIds = JSON.parse(
       (formData.get("categoryIds") as string) || "[]"
     ) as Id<"categories">[];
@@ -86,14 +87,10 @@ export default async function ProductsPage() {
       (formData.get("addOnProductIds") as string) || "[]"
     ) as Id<"products">[];
 
-    // Upload newly added images to Convex storage
-    const newImageStorageIds: Id<"_storage">[] = [];
-    for (let i = 0; i < newImageCount; i++) {
-      const imageFile = formData.get(`imageFile-${i}`) as File | null;
-      if (imageFile && imageFile.size > 0) {
-        newImageStorageIds.push(await uploadImageToConvex(imageFile));
-      }
-    }
+    // Full ordered set of gallery image storage ids the product should keep.
+    const imageStorageIds = JSON.parse(
+      (formData.get("imageStorageIds") as string) || "[]"
+    ) as Id<"_storage">[];
 
     await fetchMutation(api.products.update, {
       secret: adminSecret(),
@@ -104,39 +101,60 @@ export default async function ProductsPage() {
       price,
       stock,
       status,
-      keepUrls,
-      newImageStorageIds,
+      imageStorageIds,
       categoryIds,
       variantOptions,
       addOnProductIds,
     });
 
     revalidatePath("/admin/products");
+    revalidatePath("/");
+    revalidatePath("/products");
   }
 
   async function deleteProduct(formData: FormData) {
     "use server";
     const id = formData.get("id") as Id<"products">;
 
-    // The mutation removes the product, its relations, and its stored image files.
+    // The mutation removes the product and its relations (gallery owns the files).
     await fetchMutation(api.products.remove, {
       secret: adminSecret(),
       id,
     });
 
     revalidatePath("/admin/products");
+    revalidatePath("/");
+    revalidatePath("/products");
+  }
+
+  async function reorderProducts(formData: FormData) {
+    "use server";
+    const orderedIds = JSON.parse(
+      (formData.get("orderedIds") as string) || "[]"
+    ) as Id<"products">[];
+
+    await fetchMutation(api.products.reorder, {
+      secret: adminSecret(),
+      orderedIds,
+    });
+
+    revalidatePath("/admin/products");
+    revalidatePath("/");
+    revalidatePath("/products");
   }
 
   return (
     <div>
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-2xl font-bold text-gray-900">Products</h1>
-        <ProductForm action={createProduct} />
+        <ProductForm action={createProduct} galleryImages={galleryImages} />
       </div>
       <ProductList
         products={products}
+        galleryImages={galleryImages}
         updateAction={updateProduct}
         deleteAction={deleteProduct}
+        reorderAction={reorderProducts}
       />
     </div>
   );

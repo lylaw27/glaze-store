@@ -51,7 +51,7 @@ export default function CheckoutPage() {
       colorDanger: '#df1b41',
       fontFamily: 'system-ui, -apple-system, sans-serif',
       spacingUnit: '4px',
-      borderRadius: '8px',
+      borderRadius: '0px',
     },
   }
 
@@ -62,10 +62,10 @@ export default function CheckoutPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
-          <p className="mt-4 text-gray-600">正在準備結賬...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-foreground mx-auto"></div>
+          <p className="mt-4 text-muted-foreground">正在準備結賬...</p>
         </div>
       </div>
     )
@@ -73,19 +73,19 @@ export default function CheckoutPage() {
 
   if (!clientSecret) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
-          <p className="text-red-600">無法初始化付款，請重試。</p>
+          <p className="text-destructive">無法初始化付款，請重試。</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12">
+    <div className="min-h-screen bg-background py-12">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="bg-white rounded-lg shadow-sm p-6 md:p-8">
-          <h1 className="text-2xl font-semibold mb-8">結賬</h1>
+        <div className="bg-card border border-border p-6 md:p-10">
+          <h1 className="font-serif text-3xl font-normal mb-8">結賬</h1>
           <Elements options={options} stripe={stripePromise}>
             <CheckoutForm />
           </Elements>

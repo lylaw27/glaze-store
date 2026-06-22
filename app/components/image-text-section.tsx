@@ -25,7 +25,7 @@ export default function ImageTextSection({ props }: { props: ImageTextProps }) {
         >
           {/* Image */}
           <div className={`relative ${isImageLeft ? "" : "lg:col-start-2"}`}>
-            <div className="aspect-square lg:aspect-4/5 relative overflow-hidden rounded-lg">
+            <div className="aspect-square lg:aspect-4/5 relative overflow-hidden">
               <Image
                 src={props.image || "/placeholder.svg"}
                 alt={props.imageAlt}
@@ -38,17 +38,17 @@ export default function ImageTextSection({ props }: { props: ImageTextProps }) {
 
           {/* Text Content */}
           <div className={`space-y-6 ${isImageLeft ? "" : "lg:col-start-1"}`}>
-            {props.subtitle && <p className="text-sm text-gray-600 tracking-wide uppercase">{props.subtitle}</p>}
+            {props.subtitle && <p className="text-xs text-muted-foreground tracking-[0.15em] uppercase">{props.subtitle}</p>}
 
-            <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 leading-tight">{props.title}</h2>
+            <h2 className="font-serif text-4xl lg:text-5xl font-normal text-foreground leading-tight">{props.title}</h2>
 
-            <pre className="whitespace-pre-wrap text-lg text-gray-600 leading-relaxed">{props.description}</pre>
+            <pre className="font-sans whitespace-pre-wrap text-base text-muted-foreground leading-relaxed">{props.description}</pre>
 
             {props.buttonText && (
               <div className="pt-4">
                 <Button
                   variant="outline"
-                  className="px-8 py-3 text-base border-gray-300 hover:bg-gray-50 transition-colors bg-transparent"
+                  className="px-8 py-5 text-xs tracking-[0.2em] uppercase border-border hover:bg-muted transition-colors bg-transparent shadow-none"
                 >
                   {props.buttonText}
                 </Button>

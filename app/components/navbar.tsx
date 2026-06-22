@@ -14,23 +14,13 @@ import { MENU } from "@/app/jsonFiles/menuItems"
 
 
 export default function Navbar({ navFix }:{ navFix: boolean}) {
-  const [scrolled, setScrolled] = useState(navFix)
   const [activeIdx, setActiveIdx] = useState<number | null>(null)
   const [searchOpen, setSearchOpen] = useState(false)
   const {cartOpen, setCartOpen} = useCart();
   const closeTimer = useRef<number | null>(null)
 
-  useEffect(() => {
-    if(!navFix){
-      const onScroll = () => setScrolled(window.scrollY > 200)
-      onScroll()
-      window.addEventListener("scroll", onScroll, { passive: true })
-      return () => window.removeEventListener("scroll", onScroll)
-    }
-  }, [navFix])
-
-  const navBg = scrolled ? "bg-secondary/100 shadow-sm" : "bg-transparent"
-  const navPos = navFix ? "sticky" : scrolled ? "fixed" : "absolute"
+  // Solid, light header. `navFix` keeps it pinned on scroll; otherwise it scrolls with the page.
+  const navPos = navFix ? "sticky top-0" : "relative"
 
   // Helpers to keep full-width mega open when moving mouse to panel
   const openIdx = (idx: number) => {
@@ -51,94 +41,102 @@ export default function Navbar({ navFix }:{ navFix: boolean}) {
       <CartDrawer open={cartOpen} onOpenChange={setCartOpen} />
 
       <nav
-        className={`${navPos} top-0 left-0 right-0 z-50 transition-colors duration-300 ease-in-out ${navBg}`}
+        className={`${navPos} left-0 right-0 z-50 bg-background border-b border-border text-foreground`}
         aria-label="Primary"
       >
         <div className="max-w-7xl mx-auto px-4 lg:px-6">
-          <div className="h-24 flex items-center justify-between">
-              {/* Mobile menu trigger */}
-              <div className="lg:hidden w-1/4">
+          <div className="h-20 flex items-center justify-between">
+            {/* Left: search (desktop) / menu (mobile) */}
+            <div className="flex items-center w-1/3">
+              <div className="lg:hidden">
                 <MobileMenu />
               </div>
-
-            {/* Left: Search trigger */}
-            <div className="w-1/4 hidden lg:inline-flex">
               <button
-                aria-label="Open search"
-                className="items-center justify-center rounded-md p-2 text-white hover:bg-white/10 transition-colors"
+                aria-label="開啟搜尋"
+                className="hidden lg:inline-flex items-center justify-center p-2 text-foreground hover:opacity-60 transition-opacity"
                 onClick={() => setSearchOpen(true)}
-                >
-                <Search className="h-5 w-5" />
+              >
+                <Search className="h-5 w-5" strokeWidth={1.25} />
               </button>
             </div>
 
-            {/* Brand */}
+            {/* Brand wordmark */}
             <Link href="/" className="text-2xl font-light text-white self-center">
-              <Image width={90} height={90} src="/images/glaze-logo.png" alt="Glaze Logo"/>
+              <Image width={150} height={150} src="/logo.svg" alt="Glaze Logo"/>
             </Link>
 
             {/* Right actions */}
-            <div className="flex justify-end items-center gap-3 w-1/4">
+            <div className="flex justify-end items-center gap-4 w-1/3">
+              <span className="hidden md:inline-flex text-sm tracking-[0.15em] uppercase text-muted-foreground hover:text-foreground cursor-pointer transition-colors">
+                HKD / 繁
+              </span>
+
               <button
-                aria-label="Open search"
-                className="lg:hidden inline-flex items-center justify-center rounded-md p-2 text-white hover:bg-white/10 transition-colors"
+                aria-label="開啟搜尋"
+                className="lg:hidden inline-flex items-center justify-center p-2 text-foreground hover:opacity-60 transition-opacity"
                 onClick={() => setSearchOpen(true)}
               >
-                <Search className="h-6 w-6" />
+                <Search className="h-5 w-5" strokeWidth={1.25} />
+              </button>
+
+              {/* Account placeholder */}
+              <button
+                aria-label="帳戶"
+                className="hidden sm:inline-flex items-center justify-center p-2 text-foreground hover:opacity-60 transition-opacity"
+              >
+                <User className="h-5 w-5" strokeWidth={1.25} />
               </button>
 
               <button
-                aria-label="Open cart"
-                className="inline-flex items-center justify-center rounded-md p-2 text-white hover:bg-white/10 transition-colors"
+                aria-label="開啟購物車"
+                className="inline-flex items-center justify-center p-2 text-foreground hover:opacity-60 transition-opacity"
                 onClick={() => setCartOpen(true)}
               >
-                <ShoppingCart className="h-6 w-6" />
-              </button>
-
-              {/* User placeholder */}
-              <button
-                aria-label="Account"
-                className="hidden sm:inline-flex items-center justify-center rounded-md p-2 text-white hover:bg-white/10 transition-colors"
-              >
-                <User className="h-5 w-5" />
+                <ShoppingCart className="h-5 w-5" strokeWidth={1.25} />
               </button>
             </div>
           </div>
 
           {/* Desktop nav + Mega menus (full width) */}
-          <div className="hidden lg:block h-12">
-            <ul className="flex items-center justify-center gap-7">
+          <div className="hidden lg:block pb-2">
+            <ul className="flex items-center justify-center gap-8">
               {MENU.map((item, idx) =>
                 "dropdown" in item ? (
                   <li key={idx} className="relative" onMouseEnter={() => openIdx(idx)} onMouseLeave={scheduleClose}>
-                    <button className="text-sm tracking-wide text-white">{item.label}</button>
+                    <button
+                      className={`font-sans text-sm tracking-[0.15em] uppercase pb-1 border-b transition-colors ${
+                        activeIdx === idx ? "border-foreground text-foreground" : "border-transparent text-foreground hover:opacity-60"
+                      }`}
+                    >
+                      {item.label.replace(" ▼", "")}
+                    </button>
 
                     {/* Full-width mega panel */}
                     <div
                       onMouseEnter={() => openIdx(idx)}
                       onMouseLeave={scheduleClose}
-                      className={`fixed left-0 right-0 top-35 transition-all duration-200 ease-out ${
+                      className={`fixed left-0 right-0 top-28 transition-all duration-200 ease-out ${
                         activeIdx === idx ? "opacity-100 translate-y-0 visible" : "opacity-0 -translate-y-2 invisible"
                       }`}
                     >
                       <div className="max-w-full">
-                        <div className="bg-white text-gray-900 shadow-lg ring-1 ring-black/5 overflow-hidden">
-                          <div className="grid grid-cols-12 gap-8 p-8">
+                        <div className="bg-background text-foreground border-y border-border overflow-hidden">
+                          <div className="grid grid-cols-12 gap-8 p-10 max-w-7xl mx-auto">
                             {/* Text columns */}
                             <div className="col-span-12 lg:col-span-8 grid grid-cols-2 md:grid-cols-3 gap-8">
                               {item.dropdown?.map((section, sIdx) => (
                                 <div key={sIdx} className="min-w-48">
                                   {section.title && (
-                                    <div className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-3">
+                                    <div className="font-serif italic text-lg text-foreground mb-4">
                                       {section.title}
                                     </div>
                                   )}
-                                  <ul className="space-y-2">
+                                  <ul className="space-y-2.5">
                                     {section.links.map((l, lIdx) => (
                                       <li key={lIdx}>
                                         <Link
                                           href={l.href}
-                                          className="block text-sm text-gray-700 hover:text-gray-900 hover:underline underline-offset-4"
+                                          className="block text-sm text-muted-foreground hover:text-foreground transition-colors"
                                         >
                                           {l.label}
                                         </Link>
@@ -155,18 +153,18 @@ export default function Navbar({ navFix }:{ navFix: boolean}) {
                                 <Link
                                   key={pIdx}
                                   href={promo.href || "#"}
-                                  className="group relative block rounded-md overflow-hidden ring-1 ring-black/5"
+                                  className="group relative block overflow-hidden"
                                 >
-                                  <div className="aspect-4/3 relative">
+                                  <div className="aspect-[3/4] relative bg-muted">
                                     <Image
                                       src={promo.image || "/placeholder.svg"}
                                       alt={promo.alt}
                                       fill
-                                      className="object-cover transition-transform duration-300 group-hover:scale-105"
+                                      className="object-cover transition-transform duration-500 group-hover:scale-105"
                                     />
                                   </div>
                                   {promo.caption && (
-                                    <div className="px-3 py-2 text-sm font-medium text-gray-800">{promo.caption}</div>
+                                    <div className="pt-2 font-serif text-sm text-foreground">{promo.caption}</div>
                                   )}
                                 </Link>
                               ))}
@@ -178,8 +176,11 @@ export default function Navbar({ navFix }:{ navFix: boolean}) {
                   </li>
                 ) : (
                   <li key={idx}>
-                    <Link href={item.href} className="text-sm tracking-wide text-white">
-                      {item.label}
+                    <Link
+                      href={item.href}
+                      className="font-sans text-sm tracking-[0.15em] uppercase text-foreground hover:opacity-60 transition-opacity"
+                    >
+                      {item.label.replace(" ▼", "")}
                     </Link>
                   </li>
                 ),
@@ -198,16 +199,16 @@ function MobileMenu() {
     <Sheet>
       <SheetTrigger asChild>
         <button
-          aria-label="Open menu"
-          className="inline-flex items-center justify-center rounded-md p-2 text-white hover:bg-white/10 transition-colors"
+          aria-label="開啟選單"
+          className="inline-flex items-center justify-center p-2 text-foreground hover:opacity-60 transition-opacity"
         >
-          <Menu className="h-6 w-6" />
+          <Menu className="h-5 w-5" strokeWidth={1.25} />
         </button>
       </SheetTrigger>
 
       <SheetContent side="left" className="w-[85vw] sm:w-[360px] p-0">
-        <SheetHeader className="px-4 py-3 border-b">
-          <SheetTitle className="text-lg">選單</SheetTitle>
+        <SheetHeader className="px-5 py-4 border-b border-border">
+          <SheetTitle className="font-sans text-base tracking-[0.2em] uppercase font-light">Glaze</SheetTitle>
         </SheetHeader>
 
         <nav className="overflow-y-auto h-full">
@@ -215,14 +216,14 @@ function MobileMenu() {
             <Accordion type="single" collapsible className="w-full">
               {MENU.map((item, idx) =>
                 "dropdown" in item ? (
-                  <AccordionItem key={idx} value={`item-${idx}`} className="border-b">
-                    <AccordionTrigger className="px-2 py-3 text-base">{item.label.replace(" ▼", "")}</AccordionTrigger>
+                  <AccordionItem key={idx} value={`item-${idx}`} className="border-b border-border">
+                    <AccordionTrigger className="px-2 py-3 font-serif text-lg">{item.label.replace(" ▼", "")}</AccordionTrigger>
                     <AccordionContent>
                       <div className="px-2 pb-3">
                         {item.dropdown?.map((section, sIdx) => (
                           <div key={sIdx} className="mb-4">
                             {section.title && (
-                              <div className="px-2 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+                              <div className="px-2 font-serif italic text-base text-foreground mb-2">
                                 {section.title}
                               </div>
                             )}
@@ -232,7 +233,7 @@ function MobileMenu() {
                                   <SheetClose asChild>
                                     <Link
                                       href={l.href}
-                                      className="block rounded-md px-3 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                      className="block px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                                     >
                                       {l.label}
                                     </Link>
@@ -246,13 +247,13 @@ function MobileMenu() {
                     </AccordionContent>
                   </AccordionItem>
                 ) : (
-                  <li key={idx} className="border-b">
+                  <li key={idx} className="border-b border-border">
                     <SheetClose asChild>
                       <Link
                         href={item.href}
-                        className="block px-4 py-3 text-base text-gray-800 hover:bg-gray-100 rounded-none"
+                        className="block px-4 py-3 font-serif text-lg text-foreground hover:bg-muted"
                       >
-                        {item.label}
+                        {item.label.replace(" ▼", "")}
                       </Link>
                     </SheetClose>
                   </li>
@@ -294,16 +295,16 @@ function SearchPanel({ open, onClose }: { open: boolean; onClose: () => void }) 
         }`}
         style={{ top: 0 }}
       >
-        <div className="bg-white shadow-md ring-1 ring-black/10">
-          <div className="max-w-3xl mx-auto px-4 py-4 flex items-center gap-3">
-            <Search className="h-5 w-5 text-gray-500" />
+        <div className="bg-background border-b border-border">
+          <div className="max-w-3xl mx-auto px-4 py-5 flex items-center gap-3">
+            <Search className="h-5 w-5 text-muted-foreground" strokeWidth={1.25} />
             <input
               ref={inputRef}
               type="text"
               placeholder="搜尋商品、系列或文章..."
-              className="flex-1 bg-transparent outline-none text-base placeholder:text-gray-400"
+              className="flex-1 bg-transparent outline-none text-base placeholder:text-muted-foreground"
             />
-            <button onClick={onClose} className="text-sm text-gray-500 hover:text-gray-800">
+            <button onClick={onClose} className="text-xs tracking-[0.15em] uppercase text-muted-foreground hover:text-foreground transition-colors">
               關閉
             </button>
           </div>

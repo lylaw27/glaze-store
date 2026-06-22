@@ -1,22 +1,84 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
-import type { 
-  Product, 
-  Category, 
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  horizontalListSortingStrategy,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import type {
+  Product,
+  Category,
   VariantOptionForm,
-  ImageItem 
+  ProductImageRef,
+  GalleryImage,
 } from "@/types/product";
 
 interface ProductFormProps {
   action: (formData: FormData) => Promise<void>;
+  galleryImages: GalleryImage[];
   initialData?: Product
   onClose?: () => void;
 }
 
+// One draggable, removable thumbnail in the selected-images row.
+function SortableThumb({
+  image,
+  onRemove,
+}: {
+  image: ProductImageRef;
+  onRemove: (storageId: string) => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id: image.storageId });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+  return (
+    <div ref={setNodeRef} style={style} className="relative">
+      <div
+        {...attributes}
+        {...listeners}
+        className="cursor-grab active:cursor-grabbing touch-none"
+      >
+        <Image
+          src={image.url}
+          alt="Product image"
+          width={96}
+          height={96}
+          className="w-24 h-24 object-cover rounded-lg border border-gray-300"
+        />
+      </div>
+      <button
+        type="button"
+        onClick={() => onRemove(image.storageId)}
+        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center hover:bg-red-600 transition-colors"
+        title="Remove image"
+      >
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+  );
+}
+
 export default function ProductForm({
   action,
+  galleryImages,
   initialData,
   onClose,
 }: ProductFormProps) {
@@ -28,18 +90,16 @@ export default function ProductForm({
   const [selectedAddOnIds, setSelectedAddOnIds] = useState<string[]>([]);
   const [status, setStatus] = useState<string>(initialData?.status || "active");
   
-  // Parse initial images from JSON string
-  const initialImages: ImageItem[] = initialData?.images
-    ? JSON.parse(initialData.images).map((url: string, index: number) => ({
-        id: `existing-${index}`,
-        url,
-        isNew: false,
-      }))
+  // Parse initial images (admin shape is a JSON string of { storageId, url }).
+  const initialImages: ProductImageRef[] = initialData?.images
+    ? (JSON.parse(initialData.images) as ProductImageRef[])
     : [];
-  
-  const [images, setImages] = useState<ImageItem[]>(initialImages);
-  const [removedImageUrls, setRemovedImageUrls] = useState<string[]>([]);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Ordered list of gallery images selected for this product.
+  const [selectedImages, setSelectedImages] =
+    useState<ProductImageRef[]>(initialImages);
+  const [showGalleryPicker, setShowGalleryPicker] = useState(false);
+  const sensors = useSensors(useSensor(PointerSensor));
 
   // Variant options state
   const initialVariants = initialData?.variants && initialData.variants.length > 0
@@ -131,60 +191,39 @@ export default function ProductForm({
     setVariantOptions(updated);
   };
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (files) {
-      Array.from(files).forEach((file) => {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          const newImage: ImageItem = {
-            id: `new-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-            url: reader.result as string,
-            file,
-            isNew: true,
-          };
-          setImages((prev) => [...prev, newImage]);
-        };
-        reader.readAsDataURL(file);
-      });
-      
-      // Reset input
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
-    }
+  // Toggle a gallery image in/out of the product's selection (appends to the end).
+  const toggleGalleryImage = (img: GalleryImage) => {
+    setSelectedImages((prev) =>
+      prev.some((s) => s.storageId === img.storageId)
+        ? prev.filter((s) => s.storageId !== img.storageId)
+        : [...prev, { storageId: img.storageId, url: img.url }]
+    );
   };
 
-  const handleRemoveImage = (imageId: string) => {
-    const imageToRemove = images.find((img) => img.id === imageId);
-    if (imageToRemove && !imageToRemove.isNew) {
-      // Track removed existing images for deletion from storage
-      setRemovedImageUrls((prev) => [...prev, imageToRemove.url]);
-    }
-    setImages((prev) => prev.filter((img) => img.id !== imageId));
+  const handleRemoveImage = (storageId: string) => {
+    setSelectedImages((prev) => prev.filter((s) => s.storageId !== storageId));
+  };
+
+  const handleImageDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    setSelectedImages((prev) => {
+      const oldIndex = prev.findIndex((s) => s.storageId === active.id);
+      const newIndex = prev.findIndex((s) => s.storageId === over.id);
+      if (oldIndex === -1 || newIndex === -1) return prev;
+      return arrayMove(prev, oldIndex, newIndex);
+    });
   };
 
   const handleSubmit = async (formData: FormData) => {
     setIsLoading(true);
     try {
-      // Add new image files to form data
-      const newImageFiles = images.filter((img) => img.isNew && img.file);
-      newImageFiles.forEach((img, index) => {
-        if (img.file) {
-          formData.append(`imageFile-${index}`, img.file);
-        }
-      });
-      formData.set("newImageCount", newImageFiles.length.toString());
-      
-      // Add existing images that weren't removed (as JSON)
-      const existingImageUrls = images
-        .filter((img) => !img.isNew)
-        .map((img) => img.url);
-      formData.set("existingImages", JSON.stringify(existingImageUrls));
-      
-      // Add removed image URLs for deletion
-      formData.set("removedImages", JSON.stringify(removedImageUrls));
-      
+      // Send the full ordered set of selected gallery image storage ids.
+      formData.set(
+        "imageStorageIds",
+        JSON.stringify(selectedImages.map((img) => img.storageId))
+      );
+
       // Add selected category IDs
       formData.set("categoryIds", JSON.stringify(selectedCategoryIds));
       
@@ -314,65 +353,123 @@ export default function ProductForm({
         </div>
       </div>
       <div>
-        <label
-          className="block text-sm font-medium text-gray-700 mb-1"
-        >
+        <label className="block text-sm font-medium text-gray-700 mb-1">
           Product Images
         </label>
         <div className="space-y-3">
-          <div className="flex flex-wrap gap-3">
-            {images.map((image) => (
-              <div key={image.id} className="relative">
-                <Image
-                  src={image.url}
-                  alt="Product preview"
-                  width={96}
-                  height={96}
-                  className="w-24 h-24 object-cover rounded-lg border border-gray-300"
-                />
-                <button
-                  type="button"
-                  onClick={() => handleRemoveImage(image.id)}
-                  className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center hover:bg-red-600 transition-colors"
-                  title="Remove image"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-            ))}
-            <div
-              onClick={() => fileInputRef.current?.click()}
-              className="w-24 h-24 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition-colors"
+          {selectedImages.length > 0 && (
+            <DndContext
+              id="product-images-dnd"
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleImageDragEnd}
             >
-              <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-              </svg>
-              <span className="text-xs text-gray-500 mt-1">Add</span>
-            </div>
-          </div>
-          <input
-            ref={fileInputRef}
-            type="file"
-            id="imageFiles"
-            name="imageFiles"
-            accept="image/*"
-            multiple
-            onChange={handleImageChange}
-            className="hidden"
-            aria-label="Upload product images"
-          />
+              <SortableContext
+                items={selectedImages.map((img) => img.storageId)}
+                strategy={horizontalListSortingStrategy}
+              >
+                <div className="flex flex-wrap gap-3">
+                  {selectedImages.map((image) => (
+                    <SortableThumb
+                      key={image.storageId}
+                      image={image}
+                      onRemove={handleRemoveImage}
+                    />
+                  ))}
+                </div>
+              </SortableContext>
+            </DndContext>
+          )}
           <button
             type="button"
-            onClick={() => fileInputRef.current?.click()}
-            className="text-sm text-blue-600 hover:text-blue-800"
+            onClick={() => setShowGalleryPicker(true)}
+            className="text-sm text-blue-600 hover:text-blue-800 font-medium"
           >
-            Select images
+            + Choose from gallery
           </button>
         </div>
-        <p className="text-xs text-gray-500 mt-1">Supported formats: JPG, PNG, GIF, WebP. You can select multiple images.</p>
+        <p className="text-xs text-gray-500 mt-1">
+          Pick images from the{" "}
+          <a href="/admin/gallery" className="text-blue-600 hover:text-blue-800">
+            gallery
+          </a>
+          . Drag to reorder &mdash; the first image is the main one shown on the
+          storefront.
+        </p>
       </div>
+
+      {showGalleryPicker && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
+          <div className="bg-white rounded-xl w-full max-w-3xl max-h-[85vh] flex flex-col">
+            <div className="flex items-center justify-between p-4 border-b border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-900">
+                Select images ({selectedImages.length} selected)
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowGalleryPicker(false)}
+                className="text-gray-500 hover:text-gray-700"
+                title="Close"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="p-4 overflow-y-auto">
+              {galleryImages.length === 0 ? (
+                <p className="text-sm text-gray-500 py-8 text-center">
+                  No images in the gallery yet.{" "}
+                  <a href="/admin/gallery" className="text-blue-600 hover:text-blue-800">
+                    Upload some first
+                  </a>
+                  .
+                </p>
+              ) : (
+                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
+                  {galleryImages.map((img) => {
+                    const selected = selectedImages.some(
+                      (s) => s.storageId === img.storageId
+                    );
+                    return (
+                      <button
+                        type="button"
+                        key={img.id}
+                        onClick={() => toggleGalleryImage(img)}
+                        className={`relative aspect-square rounded-lg overflow-hidden border-2 transition-colors ${
+                          selected ? "border-blue-500" : "border-transparent hover:border-gray-300"
+                        }`}
+                      >
+                        <Image
+                          src={img.url}
+                          alt={img.name}
+                          fill
+                          className="object-cover"
+                          sizes="(max-width: 768px) 33vw, 20vw"
+                        />
+                        {selected && (
+                          <span className="absolute top-1 right-1 bg-blue-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
+                            ✓
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+            <div className="flex justify-end gap-3 p-4 border-t border-gray-200">
+              <button
+                type="button"
+                onClick={() => setShowGalleryPicker(false)}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
           Categories

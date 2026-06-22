@@ -10,6 +10,7 @@
 
 import type * as categories from "../categories.js";
 import type * as files from "../files.js";
+import type * as gallery from "../gallery.js";
 import type * as helpers from "../helpers.js";
 import type * as orders from "../orders.js";
 import type * as products from "../products.js";
@@ -23,6 +24,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   categories: typeof categories;
   files: typeof files;
+  gallery: typeof gallery;
   helpers: typeof helpers;
   orders: typeof orders;
   products: typeof products;

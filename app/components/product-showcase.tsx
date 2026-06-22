@@ -38,12 +38,15 @@ export default function ProductShowcase({ products }: ProductShowcaseProps) {
     }
   }
 
+  const currency = (n: number) =>
+    new Intl.NumberFormat("zh-HK", { style: "currency", currency: "HKD", minimumFractionDigits: 2 }).format(n)
+
   return (
-    <section className="py-16 bg-white">
+    <section className="py-20 bg-background">
       <div className="container mx-auto px-4">
         {/* Header */}
         <div className="flex justify-end mb-8">
-          <button type="button" className="text-gray-600 hover:text-amber-600 transition-colors text-sm">全部</button>
+          <Link href="/products" className="font-sans text-xs tracking-[0.15em] uppercase text-muted-foreground hover:text-foreground transition-colors">全部</Link>
         </div>
 
         {/* Products Carousel */}
@@ -52,10 +55,10 @@ export default function ProductShowcase({ products }: ProductShowcaseProps) {
           {showLeftArrow && (
             <button
               onClick={() => scroll('left')}
-              className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-white/90 hover:bg-white shadow-lg rounded-full p-2 transition-all duration-300 opacity-0 group-hover:opacity-100"
+              className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-background/90 hover:bg-background border border-border p-2 transition-all duration-300 opacity-0 group-hover:opacity-100"
               aria-label="Scroll left"
             >
-              <ChevronLeft className="w-6 h-6 text-gray-800" />
+              <ChevronLeft className="w-5 h-5 text-foreground" strokeWidth={1.25} />
             </button>
           )}
 
@@ -63,10 +66,10 @@ export default function ProductShowcase({ products }: ProductShowcaseProps) {
           {showRightArrow && (
             <button
               onClick={() => scroll('right')}
-              className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-white/90 hover:bg-white shadow-lg rounded-full p-2 transition-all duration-300 opacity-0 group-hover:opacity-100"
+              className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-background/90 hover:bg-background border border-border p-2 transition-all duration-300 opacity-0 group-hover:opacity-100"
               aria-label="Scroll right"
             >
-              <ChevronRight className="w-6 h-6 text-gray-800" />
+              <ChevronRight className="w-5 h-5 text-foreground" strokeWidth={1.25} />
             </button>
           )}
 
@@ -80,11 +83,11 @@ export default function ProductShowcase({ products }: ProductShowcaseProps) {
             {products?.map((product) => (
               <Link
                 key={product.id}
-                className="group/item relative bg-gray-50 rounded-lg overflow-hidden transition-all duration-300 hover:shadow-lg flex-shrink-0 w-[280px]"
+                className="group/item relative overflow-hidden flex-shrink-0 w-[280px]"
                 href={`/products/${product.handle}`}
               >
                 {/* Product Image Container */}
-                <div className="relative aspect-square bg-gray-100 overflow-hidden">
+                <div className="relative aspect-square bg-muted overflow-hidden">
                   {/* Main Image */}
                   {product.images && product.images.length > 0 ? (
                     <>
@@ -125,10 +128,10 @@ export default function ProductShowcase({ products }: ProductShowcaseProps) {
                 </div>
 
                 {/* Product Info */}
-                <div className="p-4 text-center">
-                  <h3 className="text-sm font-medium text-gray-900 mb-2 line-clamp-2">{product.name}</h3>
-                  <p className="text-sm text-gray-600 font-medium">
-                    ${product.price.toFixed(2)}
+                <div className="pt-3 text-left">
+                  <h3 className="font-serif text-base text-foreground mb-1 line-clamp-1">{product.name}</h3>
+                  <p className="text-sm text-muted-foreground">
+                    {currency(product.price)}
                   </p>
                 </div>
               </Link>

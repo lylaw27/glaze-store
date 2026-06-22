@@ -56,8 +56,8 @@ export default function ProductDetail({ product }: { product: ProductWithRelatio
   if (!product) {
     return (
       <div className="max-w-7xl mx-auto px-4 py-16 text-center">
-        <h1 className="text-2xl font-bold text-gray-900 mb-4">產品未找到</h1>
-        <Link href="/collections" className="text-blue-600 hover:underline">
+        <h1 className="font-serif text-3xl font-normal text-foreground mb-4">產品未找到</h1>
+        <Link href="/collections" className="text-foreground underline underline-offset-4 hover:opacity-60">
           返回商品列表
         </Link>
       </div>
@@ -101,7 +101,7 @@ export default function ProductDetail({ product }: { product: ProductWithRelatio
         {/* Image Gallery */}
         <div className="space-y-4">
           {/* Main Image */}
-          <div className="relative aspect-square bg-gray-50 rounded-lg overflow-hidden">
+          <div className="relative aspect-square bg-muted overflow-hidden">
             <Image
               src={product.images[selectedImage] || "/placeholder.svg?height=600&width=600&query=product%20image"}
               alt={product.name}
@@ -112,10 +112,10 @@ export default function ProductDetail({ product }: { product: ProductWithRelatio
             />
             <button
               onClick={() => setIsZoomed(true)}
-              className="absolute bottom-4 right-4 p-2 bg-white/80 backdrop-blur-sm rounded-full hover:bg-white/90 transition-colors"
+              className="absolute bottom-4 right-4 p-2 bg-background/80 backdrop-blur-sm border border-border hover:bg-background transition-colors"
               aria-label="放大圖片"
             >
-              <Search className="h-5 w-5" />
+              <Search className="h-5 w-5" strokeWidth={1.25} />
             </button>
           </div>
 
@@ -125,8 +125,8 @@ export default function ProductDetail({ product }: { product: ProductWithRelatio
               <div
                 key={idx}
                 onClick={() => setSelectedImage(idx)}
-                className={`relative aspect-square bg-gray-50 rounded-md overflow-hidden ring-2 transition-colors ${
-                  selectedImage === idx ? "ring-gray-900" : "ring-transparent hover:ring-gray-300"
+                className={`relative aspect-square bg-muted overflow-hidden border transition-colors cursor-pointer ${
+                  selectedImage === idx ? "border-foreground" : "border-transparent hover:border-border"
                 }`}
               >
                 <Image
@@ -144,14 +144,14 @@ export default function ProductDetail({ product }: { product: ProductWithRelatio
         {/* Product Info */}
         <div className="space-y-6">
           <div>
-            <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 mb-4">{product.name}</h1>
-            <div className="text-2xl font-semibold text-gray-900 mb-2">{currency(product.price)}</div>
-            <p className="text-sm text-gray-600">結賬時計算運費。</p>
+            <h1 className="font-serif text-3xl lg:text-4xl font-normal text-foreground mb-4">{product.name}</h1>
+            <div className="font-serif text-2xl text-foreground mb-2">{currency(product.price)}</div>
+            <p className="text-sm text-muted-foreground">結賬時計算運費。</p>
           </div>
 
           {/* Shipping Info */}
-          <div className="flex items-center gap-2 text-sm text-gray-700">
-            <Globe className="h-4 w-4" />
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Globe className="h-4 w-4" strokeWidth={1.25} />
             <span>全球運送</span>
           </div>
 
@@ -159,7 +159,7 @@ export default function ProductDetail({ product }: { product: ProductWithRelatio
           {product.variants?.options?.map((option, optionIdx) => (
           <div key={optionIdx}>
             <div className="mb-3">
-              <span className="text-sm font-medium text-gray-900">{option.name}</span>
+              <span className="text-xs tracking-[0.15em] uppercase text-foreground">{option.name}</span>
             </div>
             <div className="grid grid-cols-4 gap-2">
               {option.values?.map((value, valueIdx) => (
@@ -169,10 +169,10 @@ export default function ProductDetail({ product }: { product: ProductWithRelatio
                         ...prev,
                         [option.name]: value,
                     }))}
-                    className={`relative h-12 border rounded-md text-sm font-medium transition-colors ${
+                    className={`relative h-12 border text-sm transition-colors ${
                     selectedVariantValues[option.name] === value
-                        ? "border-gray-900 bg-gray-900 text-white"
-                        : "border-gray-300 text-gray-900 hover:border-gray-400"
+                        ? "border-foreground bg-primary text-primary-foreground"
+                        : "border-border text-foreground hover:border-foreground"
                   }`}
                 >
                   {value}
@@ -185,20 +185,20 @@ export default function ProductDetail({ product }: { product: ProductWithRelatio
           {/* Quantity */}
           <div>
             <div className="mb-3">
-              <span className="text-sm font-medium text-gray-900">數量</span>
+              <span className="text-xs tracking-[0.15em] uppercase text-foreground">數量</span>
             </div>
-            <div className="inline-flex items-center border border-gray-300 rounded-md">
+            <div className="inline-flex items-center border border-border">
               <button
                 onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                className="p-3 hover:bg-gray-50 disabled:opacity-50"
+                className="p-3 hover:bg-muted disabled:opacity-50"
                 disabled={quantity <= 1}
                 aria-label="減少數量"
               >
-                <Minus className="h-4 w-4" />
+                <Minus className="h-4 w-4" strokeWidth={1.25} />
               </button>
-              <div className="px-4 py-3 text-base font-medium tabular-nums min-w-12 text-center">{quantity}</div>
-              <button onClick={() => setQuantity(quantity + 1)} className="p-3 hover:bg-gray-50" aria-label="增加數量">
-                <Plus className="h-4 w-4" />
+              <div className="px-4 py-3 text-base tabular-nums min-w-12 text-center">{quantity}</div>
+              <button onClick={() => setQuantity(quantity + 1)} className="p-3 hover:bg-muted" aria-label="增加數量">
+                <Plus className="h-4 w-4" strokeWidth={1.25} />
               </button>
             </div>
           </div>
@@ -244,11 +244,11 @@ export default function ProductDetail({ product }: { product: ProductWithRelatio
           {/* Product Add-ons */}
       {product.addOns && product.addOns.length > 0 && (
         <div className="mt-8 space-y-4">
-          <h3 className="text-sm font-medium text-gray-900">推薦配件</h3>
+          <h3 className="text-xs tracking-[0.15em] uppercase text-foreground">推薦配件</h3>
           {product.addOns.map((addOnItem) => {
             const addon = addOnItem.addOnProduct;
             return (
-            <div key={addon.id} className={`bg-gray-50 rounded-lg p-4 border ${selectedAddons.includes(addon.id) ? "border-gray-500" : "border-gray-300"}`}>
+            <div key={addon.id} className={`bg-muted p-4 border ${selectedAddons.includes(addon.id) ? "border-foreground" : "border-border"}`}>
               <div className="flex gap-4 items-center">
                 <Checkbox
                   id={addon.id}
@@ -262,19 +262,19 @@ export default function ProductDetail({ product }: { product: ProductWithRelatio
                     alt={addon.name}
                     width={80}
                     height={80}
-                    className="rounded-md object-cover"
+                    className="object-cover"
                   />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start justify-between">
                     <div>
                       <div className="flex items-center gap-2">
-                        <label htmlFor={addon.id} className="text-base font-medium text-gray-900 cursor-pointer">
+                        <label htmlFor={addon.id} className="font-serif text-base text-foreground cursor-pointer">
                           {addon.name}
                         </label>
                       </div>
-                      <div className="text-lg font-semibold text-gray-900 mt-1">{currency(addon.price)}</div>
-                      {addon.description && <p className="text-sm text-gray-600 mt-1">{addon.description}</p>}
+                      <div className="font-serif text-lg text-foreground mt-1">{currency(addon.price)}</div>
+                      {addon.description && <p className="text-sm text-muted-foreground mt-1">{addon.description}</p>}
                     </div>
                   </div>
                 </div>
@@ -286,9 +286,9 @@ export default function ProductDetail({ product }: { product: ProductWithRelatio
 
           {/* Product Description */}
           {product.description && (
-            <div className="pt-6 border-t border-gray-200">
-              <h3 className="text-sm font-medium text-gray-900 mb-2">產品描述</h3>
-              <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">{product.description}</p>
+            <div className="pt-6 border-t border-border">
+              <h3 className="text-xs tracking-[0.15em] uppercase text-foreground mb-3">產品描述</h3>
+              <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">{product.description}</p>
             </div>
           )}
         </div>
@@ -330,9 +330,9 @@ export default function ProductDetail({ product }: { product: ProductWithRelatio
       <div className="mt-16">
         <Accordion type="single" collapsible className="w-full">
           {FAQ_DATA.map((faq, idx) => (
-            <AccordionItem key={idx} value={`faq-${idx}`}>
-              <AccordionTrigger className="text-left text-base font-medium">{faq.question}</AccordionTrigger>
-              <AccordionContent className="text-sm text-gray-600 leading-relaxed">{faq.answer}</AccordionContent>
+            <AccordionItem key={idx} value={`faq-${idx}`} className="border-border">
+              <AccordionTrigger className="text-left font-serif text-lg font-normal">{faq.question}</AccordionTrigger>
+              <AccordionContent className="text-sm text-muted-foreground leading-relaxed">{faq.answer}</AccordionContent>
             </AccordionItem>
           ))}
         </Accordion>
@@ -396,7 +396,7 @@ export default function ProductDetail({ product }: { product: ProductWithRelatio
             )}
 
             {/* Image counter */}
-            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 px-3 py-1 bg-black/50 backdrop-blur-sm rounded-full text-white text-sm">
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 px-3 py-1 bg-black/50 backdrop-blur-sm text-white text-sm tabular-nums">
               {selectedImage + 1} / {product.images.length}
             </div>
           </div>
