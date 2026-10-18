@@ -1,10 +1,10 @@
 import { fetchQuery, fetchMutation } from "convex/nextjs";
 import { api } from "@/convex/_generated/api";
 import { revalidatePath } from "next/cache";
-import { adminSecret, uploadImageToConvex } from "@/lib/convex";
+import { adminSecret } from "@/lib/convex";
 import type { Id } from "@/convex/_generated/dataModel";
 import type { GalleryImage } from "@/types/product";
-import GalleryManager from "./GalleryManager";
+import GalleryManager, { type UploadedGalleryImage } from "./GalleryManager";
 
 async function getGallery(): Promise<GalleryImage[]> {
   const images = await fetchQuery(api.gallery.list, { secret: adminSecret() });
@@ -14,42 +14,30 @@ async function getGallery(): Promise<GalleryImage[]> {
 export default async function GalleryPage() {
   const images = await getGallery();
 
-  // Receives client-compressed files plus their metadata, uploads the bytes to
-  // Convex storage, and records them as gallery rows.
-  async function uploadToGallery(formData: FormData) {
+  // Mints short-lived Convex upload URLs so the browser can send image bytes
+  // straight to storage (server actions cap request bodies at 1 MB).
+  async function getUploadUrls(count: number): Promise<string[]> {
     "use server";
-    const count = parseInt((formData.get("count") as string) || "0", 10);
+    const n = Math.min(Math.max(Math.floor(count), 0), 50);
+    return Promise.all(
+      Array.from({ length: n }, () =>
+        fetchMutation(api.files.generateUploadUrl, { secret: adminSecret() })
+      )
+    );
+  }
 
-    const uploaded: {
-      storageId: Id<"_storage">;
-      name: string;
-      size: number;
-      width?: number;
-      height?: number;
-    }[] = [];
-
-    for (let i = 0; i < count; i++) {
-      const file = formData.get(`file-${i}`) as File | null;
-      if (!file || file.size === 0) continue;
-      const storageId = await uploadImageToConvex(file);
-      const width = formData.get(`width-${i}`);
-      const height = formData.get(`height-${i}`);
-      uploaded.push({
-        storageId,
-        name: (formData.get(`name-${i}`) as string) || file.name,
-        size: file.size,
-        width: width ? parseInt(width as string, 10) : undefined,
-        height: height ? parseInt(height as string, 10) : undefined,
-      });
-    }
-
-    if (uploaded.length > 0) {
+  // Records already-uploaded files (metadata only) as gallery rows.
+  async function addToGallery(images: UploadedGalleryImage[]) {
+    "use server";
+    if (images.length > 0) {
       await fetchMutation(api.gallery.bulkAdd, {
         secret: adminSecret(),
-        images: uploaded,
+        images: images.map((img) => ({
+          ...img,
+          storageId: img.storageId as Id<"_storage">,
+        })),
       });
     }
-
     revalidatePath("/admin/gallery");
   }
 
@@ -68,7 +56,8 @@ export default async function GalleryPage() {
       </div>
       <GalleryManager
         images={images}
-        uploadAction={uploadToGallery}
+        getUploadUrlsAction={getUploadUrls}
+        addToGalleryAction={addToGallery}
         deleteAction={deleteGalleryImage}
       />
     </div>

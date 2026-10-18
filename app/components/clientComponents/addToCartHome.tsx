@@ -28,7 +28,7 @@ export default function AddToCartButton({ productId, name, price, image }: AddTo
     return (
         <Button
             onClick={handleAddToCart}
-            className="bg-background text-foreground hover:bg-background/90 px-6 h-11 text-xs tracking-[0.15em] uppercase rounded-none shadow-none transition-colors"
+            className="bg-background text-foreground hover:bg-background/90 w-full sm:w-auto px-2 sm:px-6 h-11 text-[10px] sm:text-xs sm:tracking-[0.15em] uppercase rounded-none shadow-none transition-colors"
             size="sm"
         >
             <ShoppingCart className="w-4 h-4 mr-2" strokeWidth={1.25} />

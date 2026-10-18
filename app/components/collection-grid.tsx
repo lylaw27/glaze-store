@@ -2,7 +2,7 @@
 
 import Image from "next/image"
 import Link from "next/link"
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import {
   Sheet,
@@ -48,14 +48,25 @@ export default function CollectionGrid(
     page: number
     pathname:string
   }) {
-  const [sheetOpen, setSheetOpen] = useState(false)
-  const [selectedCats, setSelectedCats] = useState<string[]>([])
-  const [priceRange, setPriceRange] = useState<[number, number]>([0, 300])
-  const [sort, setSort] = useState<"featured" | "price-asc" | "price-desc">("featured")
   const router = useRouter();
   const searchParams = useSearchParams();
-  const didMount = useRef(false);
+  const [sheetOpen, setSheetOpen] = useState(false)
+  const [selectedCats, setSelectedCats] = useState<string[]>(() => searchParams.getAll("category"))
+  const [priceRange, setPriceRange] = useState<[number, number]>(() => [
+    Number(searchParams.get("lowPrice") ?? 0),
+    Number(searchParams.get("highPrice") ?? 300),
+  ])
+  const [sort, setSort] = useState<"featured" | "price-asc" | "price-desc">(() => {
+    const value = searchParams.get("sort");
+    return value === "price-asc" || value === "price-desc" ? value : "featured";
+  })
   const sectionRef = useRef<HTMLElement>(null);
+  const activeCategoryHandles = searchParams.getAll("category");
+  const activeCategoryNames = Object.values(categoriesList)
+    .flat()
+    .filter((category) => activeCategoryHandles.includes(category.handle))
+    .map((category) => category.name);
+  const title = activeCategoryNames.length > 0 ? activeCategoryNames.join("、") : "全部商品";
 
   // Helper to build URL with page number while preserving other params
   const buildPageUrl = (pageNum: number) => {
@@ -75,36 +86,19 @@ export default function CollectionGrid(
     setSelectedCats((prev) => (prev.includes(handle) ? prev.filter((t) => t !== handle) : [...prev, handle]))
   }
 
-  const applyFilter = useCallback(() => {
-      let queryString = "?"
+  const applyFilter = (nextSort: typeof sort = sort) => {
+    const params = new URLSearchParams();
+    selectedCats.forEach((category) => params.append("category", category));
 
-      //Category query
-      selectedCats.forEach((cat)=>{
-        queryString += "category=" + cat + "&";
-      })
-      
-      //Sort query
-      if(sort !== "featured"){
-        queryString += "sort=" + sort + "&";
-      }
-
-      // Price Range Query
-      if(!(priceRange[0] === 0 && priceRange[1] === 300)){
-        queryString += "lowPrice=" + priceRange[0] + "&" + "highPrice=" + priceRange[1]  + "&";
-      }
-
-      router.push(pathname + queryString, { scroll: false })
-      router.refresh()
-  }, [selectedCats, sort, priceRange, pathname, router])
-
-  useEffect(()=>{
-    if(didMount.current){
-      applyFilter()
+    if (nextSort !== "featured") params.set("sort", nextSort);
+    if (priceRange[0] !== 0 || priceRange[1] !== 300) {
+      params.set("lowPrice", priceRange[0].toString());
+      params.set("highPrice", priceRange[1].toString());
     }
-    else{
-      didMount.current = true;
-    }
-  },[sort, applyFilter])
+
+    const query = params.toString();
+    router.push(query ? `${pathname}?${query}` : pathname, { scroll: false });
+  };
 
   const currency = (n: number) =>
     new Intl.NumberFormat("zh-HK", { style: "currency", currency: "HKD", minimumFractionDigits: 2 }).format(n)
@@ -122,11 +116,13 @@ export default function CollectionGrid(
             </BreadcrumbItem>
             <BreadcrumbSeparator />
             <BreadcrumbItem>
-              <BreadcrumbPage>最新款式</BreadcrumbPage>
+              <BreadcrumbPage>{title}</BreadcrumbPage>
             </BreadcrumbItem>
           </BreadcrumbList>
         </Breadcrumb>
       </div>
+
+      <h2 className="mb-8 font-serif text-lg font-normal text-foreground sm:text-xl">{title}</h2>
 
       {/* Toolbar */}
       <div className="flex items-center justify-between gap-3 mb-6">
@@ -185,7 +181,7 @@ export default function CollectionGrid(
                 重設
               </Button>
               <SheetClose asChild>
-                <Button className="ml-auto" onClick={applyFilter}>套用</Button>
+                <Button className="ml-auto" onClick={() => applyFilter()}>套用</Button>
               </SheetClose>
             </SheetFooter>
           </SheetContent>
@@ -199,7 +195,9 @@ export default function CollectionGrid(
           <Select
             value={sort}
             onValueChange={(v) => {
-              setSort(v as typeof sort)
+              const nextSort = v as typeof sort;
+              setSort(nextSort);
+              applyFilter(nextSort);
             }}
           >
             <SelectTrigger id="sort" className="w-auto gap-2 border-0 shadow-none px-0 text-xs tracking-[0.15em] uppercase focus-visible:ring-0">
@@ -215,20 +213,20 @@ export default function CollectionGrid(
       </div>
 
       {/* Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-10 sm:gap-x-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-10 sm:gap-x-6">
         {allProducts.map((p: ProductWithParsedFields) => (
           <Link
             key={p.id}
             href={"/products/"+ p.handle}
             className="group"
           >
-            <div className="relative aspect-square bg-muted overflow-hidden">
+            <div className="relative aspect-[4/5] bg-muted overflow-hidden">
               <Image
                 src={p.images[0] || "/placeholder.svg?height=600&width=600&query=product%20image"}
                 alt={p.name}
                 fill
                 className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
-                sizes="(max-width: 640px) 50vw, (max-width: 1024px) 50vw, 33vw"
+                sizes="(max-width: 1023px) 50vw, (max-width: 1280px) 25vw, 286px"
               />
             </div>
             <div className="pt-3">

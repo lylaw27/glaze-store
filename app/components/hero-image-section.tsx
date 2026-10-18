@@ -7,11 +7,11 @@ import { HeroSlide } from "@/types"
 export default function HeroImageSection({slide}: { slide: HeroSlide }) {
 
   return (
-    <div className="relative min-h-[80vh] bg-linear-to-br from-stone-100 to-stone-200 overflow-hidden touch-pan-y">
+    <div className="relative min-h-[100vh] bg-linear-to-br from-stone-100 to-stone-200 overflow-hidden touch-pan-y">
       {/* Carousel Container */}
-      <div className="relative h-[80vh]">
+      <div className="relative h-[100vh]">
         {/* Slides */}
-            <div key={slide.id} className="min-w-full h-[80vh] relative flex items-center">
+            <div key={slide.id} className="min-w-full h-[100vh] relative flex items-center">
               {/* Background Image */}
               <div className="absolute inset-0"> 
                 <Image
@@ -27,7 +27,7 @@ export default function HeroImageSection({slide}: { slide: HeroSlide }) {
               <div className="relative z-10 container mx-auto px-4">
                 <div className="max-w-2xl">
                   {/* Main Heading */}
-                  <h1 className="font-serif md:text-7xl text-5xl font-light text-white mb-6 leading-[1.05] animate-fade-in">
+                  <h1 className="font-serif md:text-7xl text-5xl font-light text-white mb-6 leading-[1.05] whitespace-pre-line animate-fade-in">
                     {slide.title}
                   </h1>
 

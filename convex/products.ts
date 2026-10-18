@@ -1,6 +1,6 @@
-import { query, mutation, QueryCtx } from "./_generated/server";
-import { v } from "convex/values";
-import { Doc } from "./_generated/dataModel";
+import { query, mutation, QueryCtx, MutationCtx } from "./_generated/server";
+import { v, Infer } from "convex/values";
+import { Doc, Id } from "./_generated/dataModel";
 import { assertAdmin, toIso } from "./helpers";
 
 const variantOptionsValidator = v.array(
@@ -14,6 +14,71 @@ function byPosition(a: Doc<"products">, b: Doc<"products">): number {
   const pb = b.position ?? Number.MAX_SAFE_INTEGER;
   if (pa !== pb) return pa - pb;
   return b._creationTime - a._creationTime;
+}
+
+// Turn ordered gallery storage ids into {storageId, url}, dropping missing files.
+async function resolveImages(ctx: MutationCtx, storageIds: Id<"_storage">[]) {
+  const images = [];
+  for (const storageId of storageIds) {
+    const url = await ctx.storage.getUrl(storageId);
+    if (url) images.push({ storageId, url });
+  }
+  return images;
+}
+
+// Replace a product's category links, single variant row and add-on links.
+async function replaceRelations(
+  ctx: MutationCtx,
+  productId: Id<"products">,
+  rel: {
+    categoryIds: Id<"categories">[];
+    variantOptions: Infer<typeof variantOptionsValidator>;
+    addOnProductIds: Id<"products">[];
+  },
+  now: number
+) {
+  const existingPcs = await ctx.db
+    .query("productCategories")
+    .withIndex("by_product", (q) => q.eq("productId", productId))
+    .collect();
+  for (const pc of existingPcs) await ctx.db.delete(pc._id);
+  for (const categoryId of rel.categoryIds) {
+    await ctx.db.insert("productCategories", { productId, categoryId });
+  }
+
+  // Upsert/delete the single variant row.
+  const existingVariants = await ctx.db
+    .query("productVariants")
+    .withIndex("by_product", (q) => q.eq("productId", productId))
+    .collect();
+  if (rel.variantOptions.length > 0) {
+    if (existingVariants.length > 0) {
+      await ctx.db.patch(existingVariants[0]._id, {
+        options: rel.variantOptions,
+        updatedAt: now,
+      });
+      for (let i = 1; i < existingVariants.length; i++) {
+        await ctx.db.delete(existingVariants[i]._id);
+      }
+    } else {
+      await ctx.db.insert("productVariants", {
+        productId,
+        options: rel.variantOptions,
+        updatedAt: now,
+      });
+    }
+  } else {
+    for (const vd of existingVariants) await ctx.db.delete(vd._id);
+  }
+
+  const existingAddOns = await ctx.db
+    .query("productAddOns")
+    .withIndex("by_main", (q) => q.eq("mainProductId", productId))
+    .collect();
+  for (const ao of existingAddOns) await ctx.db.delete(ao._id);
+  for (const addOnProductId of rel.addOnProductIds) {
+    await ctx.db.insert("productAddOns", { mainProductId: productId, addOnProductId });
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -300,11 +365,7 @@ export const create = mutation({
     const now = Date.now();
 
     // Images are gallery files chosen in the form; keep the given order.
-    const images = [];
-    for (const storageId of args.imageStorageIds) {
-      const url = await ctx.storage.getUrl(storageId);
-      if (url) images.push({ storageId, url });
-    }
+    const images = await resolveImages(ctx, args.imageStorageIds);
 
     // Append to the end of the admin sort order.
     const all = await ctx.db.query("products").collect();
@@ -325,19 +386,7 @@ export const create = mutation({
       updatedAt: now,
     });
 
-    for (const categoryId of args.categoryIds) {
-      await ctx.db.insert("productCategories", { productId, categoryId });
-    }
-    if (args.variantOptions.length > 0) {
-      await ctx.db.insert("productVariants", {
-        productId,
-        options: args.variantOptions,
-        updatedAt: now,
-      });
-    }
-    for (const addOnProductId of args.addOnProductIds) {
-      await ctx.db.insert("productAddOns", { mainProductId: productId, addOnProductId });
-    }
+    await replaceRelations(ctx, productId, args, now);
 
     return { id: productId };
   },
@@ -366,11 +415,7 @@ export const update = mutation({
 
     // The form sends the full desired image set in order (gallery files). Rebuild
     // the array from it; do NOT delete storage — the gallery owns those files.
-    const images = [];
-    for (const storageId of args.imageStorageIds) {
-      const url = await ctx.storage.getUrl(storageId);
-      if (url) images.push({ storageId, url });
-    }
+    const images = await resolveImages(ctx, args.imageStorageIds);
 
     await ctx.db.patch(args.id, {
       name: args.name,
@@ -383,50 +428,125 @@ export const update = mutation({
       updatedAt: now,
     });
 
-    // Replace category links.
-    const existingPcs = await ctx.db
-      .query("productCategories")
-      .withIndex("by_product", (q) => q.eq("productId", args.id))
-      .collect();
-    for (const pc of existingPcs) await ctx.db.delete(pc._id);
-    for (const categoryId of args.categoryIds) {
-      await ctx.db.insert("productCategories", { productId: args.id, categoryId });
+    await replaceRelations(ctx, args.id, args, now);
+  },
+});
+
+// Bulk upsert from the admin CSV import, keyed by handle. References come in as
+// human-readable strings (category handles, gallery image names, add-on handles)
+// and are resolved here. All-or-nothing: if any row has an error, nothing is written.
+// `line` is the spreadsheet line number, used only for error messages.
+export const importCsv = mutation({
+  args: {
+    secret: v.string(),
+    rows: v.array(
+      v.object({
+        line: v.number(),
+        handle: v.string(),
+        name: v.string(),
+        description: v.optional(v.string()),
+        price: v.number(),
+        stock: v.number(),
+        status: v.string(),
+        categoryHandles: v.array(v.string()),
+        imageNames: v.array(v.string()),
+        variantOptions: variantOptionsValidator,
+        addOnHandles: v.array(v.string()),
+      })
+    ),
+  },
+  handler: async (ctx, args) => {
+    assertAdmin(args.secret);
+    const now = Date.now();
+    const errors: { line: number; message: string }[] = [];
+
+    const categoryByHandle = new Map<string, Id<"categories">>();
+    for (const cat of await ctx.db.query("categories").collect()) {
+      categoryByHandle.set(cat.handle, cat._id);
     }
 
-    // Upsert/delete the single variant row.
-    const existingVariants = await ctx.db
-      .query("productVariants")
-      .withIndex("by_product", (q) => q.eq("productId", args.id))
-      .collect();
-    if (args.variantOptions.length > 0) {
-      if (existingVariants.length > 0) {
-        await ctx.db.patch(existingVariants[0]._id, {
-          options: args.variantOptions,
-          updatedAt: now,
-        });
-        for (let i = 1; i < existingVariants.length; i++) {
-          await ctx.db.delete(existingVariants[i]._id);
-        }
-      } else {
-        await ctx.db.insert("productVariants", {
-          productId: args.id,
-          options: args.variantOptions,
-          updatedAt: now,
-        });
+    // Gallery names aren't unique; an ambiguous name can't be resolved.
+    const storageByName = new Map<string, Id<"_storage"> | null>();
+    for (const img of await ctx.db.query("galleryImages").collect()) {
+      storageByName.set(img.name, storageByName.has(img.name) ? null : img.storageId);
+    }
+
+    const allProducts = await ctx.db.query("products").collect();
+    const productByHandle = new Map<string, Id<"products">>();
+    for (const p of allProducts) productByHandle.set(p.handle, p._id);
+
+    const fileHandles = new Set<string>();
+    for (const row of args.rows) {
+      const err = (message: string) => errors.push({ line: row.line, message });
+      if (!row.handle) err("handle is required");
+      if (!row.name) err("name is required");
+      if (row.handle && fileHandles.has(row.handle)) {
+        err(`duplicate handle "${row.handle}" in file`);
       }
-    } else {
-      for (const vd of existingVariants) await ctx.db.delete(vd._id);
+      fileHandles.add(row.handle);
+      for (const h of row.categoryHandles) {
+        if (!categoryByHandle.has(h)) err(`unknown category "${h}"`);
+      }
+      for (const n of row.imageNames) {
+        const id = storageByName.get(n);
+        if (id === undefined) err(`image "${n}" not found in gallery`);
+        else if (id === null) err(`image name "${n}" matches multiple gallery images`);
+      }
+    }
+    for (const row of args.rows) {
+      for (const h of row.addOnHandles) {
+        if (!productByHandle.has(h) && !fileHandles.has(h)) {
+          errors.push({ line: row.line, message: `unknown add-on product "${h}"` });
+        }
+      }
+    }
+    if (errors.length > 0) return { created: 0, updated: 0, errors };
+
+    // Upsert products; new ones append to the end of the admin sort order.
+    let nextPosition =
+      allProducts.reduce((max, p) => Math.max(max, p.position ?? -1), -1) + 1;
+    let created = 0;
+    let updated = 0;
+    for (const row of args.rows) {
+      const fields = {
+        name: row.name,
+        handle: row.handle,
+        description: row.description,
+        price: row.price,
+        stock: row.stock,
+        status: row.status,
+        images: await resolveImages(
+          ctx,
+          row.imageNames.map((n) => storageByName.get(n)!)
+        ),
+        updatedAt: now,
+      };
+      const existingId = productByHandle.get(row.handle);
+      if (existingId) {
+        await ctx.db.patch(existingId, fields);
+        updated++;
+      } else {
+        const id = await ctx.db.insert("products", { ...fields, position: nextPosition++ });
+        productByHandle.set(row.handle, id);
+        created++;
+      }
     }
 
-    // Replace add-on links.
-    const existingAddOns = await ctx.db
-      .query("productAddOns")
-      .withIndex("by_main", (q) => q.eq("mainProductId", args.id))
-      .collect();
-    for (const ao of existingAddOns) await ctx.db.delete(ao._id);
-    for (const addOnProductId of args.addOnProductIds) {
-      await ctx.db.insert("productAddOns", { mainProductId: args.id, addOnProductId });
+    // Relations last, so add-ons can reference products created in this file.
+    for (const row of args.rows) {
+      await replaceRelations(
+        ctx,
+        productByHandle.get(row.handle)!,
+        {
+          categoryIds: row.categoryHandles.map((h) => categoryByHandle.get(h)!),
+          variantOptions: row.variantOptions,
+          addOnProductIds: row.addOnHandles.map((h) => productByHandle.get(h)!),
+        },
+        now
+      );
     }
+
+    return { created, updated, errors };
   },
 });
 

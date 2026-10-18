@@ -6,6 +6,8 @@ import type { Id } from "@/convex/_generated/dataModel";
 import type { GalleryImage } from "@/types/product";
 import ProductList from "./ProductList";
 import ProductForm from "./ProductForm";
+import ProductCsvTools from "./ProductCsvTools";
+import type { ImportRow } from "@/lib/productCsv";
 import { AdminProduct } from "@/types";
 
 async function getProducts(): Promise<AdminProduct[]> {
@@ -143,11 +145,34 @@ export default async function ProductsPage() {
     revalidatePath("/products");
   }
 
+  async function importProducts(rows: ImportRow[]) {
+    "use server";
+    // All-or-nothing upsert by handle; returns per-line errors without writing.
+    const result = await fetchMutation(api.products.importCsv, {
+      secret: adminSecret(),
+      rows,
+    });
+
+    if (result.errors.length === 0) {
+      revalidatePath("/admin/products");
+      revalidatePath("/");
+      revalidatePath("/products");
+    }
+    return result;
+  }
+
   return (
     <div>
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-2xl font-bold text-gray-900">Products</h1>
-        <ProductForm action={createProduct} galleryImages={galleryImages} />
+        <div className="flex gap-2">
+          <ProductCsvTools
+            products={products}
+            galleryImages={galleryImages}
+            importAction={importProducts}
+          />
+          <ProductForm action={createProduct} galleryImages={galleryImages} />
+        </div>
       </div>
       <ProductList
         products={products}

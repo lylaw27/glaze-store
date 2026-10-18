@@ -4,10 +4,20 @@ import { useState, useRef } from "react";
 import Image from "next/image";
 import imageCompression from "browser-image-compression";
 import type { GalleryImage } from "@/types/product";
+import { isDrivePickerConfigured, pickDriveImages } from "@/lib/googleDrivePicker";
+
+export interface UploadedGalleryImage {
+  storageId: string;
+  name: string;
+  size: number;
+  width?: number;
+  height?: number;
+}
 
 interface GalleryManagerProps {
   images: GalleryImage[];
-  uploadAction: (formData: FormData) => Promise<void>;
+  getUploadUrlsAction: (count: number) => Promise<string[]>;
+  addToGalleryAction: (images: UploadedGalleryImage[]) => Promise<void>;
   deleteAction: (formData: FormData) => Promise<void>;
 }
 
@@ -18,6 +28,20 @@ const COMPRESSION_OPTIONS = {
   fileType: "image/webp",
   useWebWorker: true,
 } as const;
+
+const UPLOAD_CONCURRENCY = 3;
+
+// POST one file to a Convex upload URL and return its storage id.
+async function uploadToStorage(url: string, file: File): Promise<string> {
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": file.type },
+    body: file,
+  });
+  if (!res.ok) throw new Error(`Upload failed for ${file.name} (${res.status})`);
+  const { storageId } = (await res.json()) as { storageId: string };
+  return storageId;
+}
 
 // Read pixel dimensions of an image file in the browser.
 function readDimensions(file: File): Promise<{ width: number; height: number }> {
@@ -44,53 +68,94 @@ function formatBytes(bytes: number): string {
 
 export default function GalleryManager({
   images,
-  uploadAction,
+  getUploadUrlsAction,
+  addToGalleryAction,
   deleteAction,
 }: GalleryManagerProps) {
   const [isUploading, setIsUploading] = useState(false);
-  const [progress, setProgress] = useState<{ done: number; total: number }>({
-    done: 0,
-    total: 0,
-  });
+  const [progress, setProgress] = useState<{
+    stage: "Compressing" | "Uploading";
+    done: number;
+    total: number;
+  }>({ stage: "Compressing", done: 0, total: 0 });
   const [error, setError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [driveStatus, setDriveStatus] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFiles = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files ? Array.from(e.target.files) : [];
-    if (files.length === 0) return;
+  // Compress and upload a batch of files (from the file input or Google Drive).
+  // `alreadySkipped` lists names that failed earlier (e.g. Drive downloads).
+  const processFiles = async (files: File[], alreadySkipped: string[] = []) => {
+    if (files.length === 0) {
+      if (alreadySkipped.length > 0) {
+        setError(`Couldn't import: ${alreadySkipped.join(", ")}`);
+      }
+      return;
+    }
 
     setError(null);
     setIsUploading(true);
-    setProgress({ done: 0, total: files.length });
+    setProgress({ stage: "Compressing", done: 0, total: files.length });
+    const skipped = [...alreadySkipped];
 
     try {
-      const formData = new FormData();
-      let count = 0;
-
+      // 1. Compress in the browser.
+      const prepared: { file: File; name: string; width: number; height: number }[] = [];
       for (const file of files) {
         try {
           const compressed = await imageCompression(file, COMPRESSION_OPTIONS);
           const { width, height } = await readDimensions(compressed);
           const webpName = file.name.replace(/\.[^.]+$/, "") + ".webp";
-
-          formData.append(
-            `file-${count}`,
-            new File([compressed], webpName, { type: "image/webp" })
-          );
-          formData.append(`name-${count}`, file.name);
-          formData.append(`width-${count}`, String(width));
-          formData.append(`height-${count}`, String(height));
-          count++;
+          prepared.push({
+            file: new File([compressed], webpName, { type: "image/webp" }),
+            name: file.name,
+            width,
+            height,
+          });
         } catch (err) {
           console.error("Compression failed for", file.name, err);
+          skipped.push(file.name);
         }
         setProgress((p) => ({ ...p, done: p.done + 1 }));
       }
 
-      if (count > 0) {
-        formData.set("count", String(count));
-        await uploadAction(formData);
+      // 2. Upload bytes straight to Convex storage (keeps server-action bodies tiny).
+      const uploaded: UploadedGalleryImage[] = [];
+      if (prepared.length > 0) {
+        setProgress({ stage: "Uploading", done: 0, total: prepared.length });
+        const urls = await getUploadUrlsAction(prepared.length);
+        for (let i = 0; i < prepared.length; i += UPLOAD_CONCURRENCY) {
+          const batch = prepared.slice(i, i + UPLOAD_CONCURRENCY);
+          const results = await Promise.allSettled(
+            batch.map((p, j) => uploadToStorage(urls[i + j], p.file))
+          );
+          results.forEach((r, j) => {
+            const p = batch[j];
+            if (r.status === "fulfilled") {
+              uploaded.push({
+                storageId: r.value,
+                name: p.name,
+                size: p.file.size,
+                width: p.width || undefined,
+                height: p.height || undefined,
+              });
+            } else {
+              console.error(r.reason);
+              skipped.push(p.name);
+            }
+          });
+          setProgress((p) => ({ ...p, done: p.done + batch.length }));
+        }
+      }
+
+      // 3. Record the gallery rows (metadata only).
+      if (uploaded.length > 0) {
+        await addToGalleryAction(uploaded);
+        if (skipped.length > 0) {
+          setError(
+            `${skipped.length} image${skipped.length === 1 ? "" : "s"} couldn't be processed: ${skipped.join(", ")}`
+          );
+        }
       } else {
         setError("No images could be processed.");
       }
@@ -99,10 +164,32 @@ export default function GalleryManager({
       setError("Upload failed. Please try again.");
     } finally {
       setIsUploading(false);
-      setProgress({ done: 0, total: 0 });
+      setProgress({ stage: "Compressing", done: 0, total: 0 });
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
+
+  const handleFiles = (e: React.ChangeEvent<HTMLInputElement>) =>
+    processFiles(e.target.files ? Array.from(e.target.files) : []);
+
+  const handleDriveImport = async () => {
+    setError(null);
+    setDriveStatus("Connecting to Google Drive…");
+    try {
+      const { files, failed } = await pickDriveImages((n) =>
+        setDriveStatus(`Downloading ${n} image${n === 1 ? "" : "s"} from Drive…`)
+      );
+      setDriveStatus(null);
+      await processFiles(files, failed);
+    } catch (err) {
+      console.error(err);
+      setError(err instanceof Error ? err.message : "Google Drive import failed.");
+    } finally {
+      setDriveStatus(null);
+    }
+  };
+
+  const busy = isUploading || driveStatus !== null;
 
   const handleDelete = async (img: GalleryImage) => {
     if (
@@ -123,9 +210,9 @@ export default function GalleryManager({
       {/* Uploader */}
       <div className="bg-white rounded-xl shadow-sm p-6">
         <div
-          onClick={() => !isUploading && fileInputRef.current?.click()}
+          onClick={() => !busy && fileInputRef.current?.click()}
           className={`border-2 border-dashed rounded-lg p-8 flex flex-col items-center justify-center transition-colors ${
-            isUploading
+            busy
               ? "border-gray-200 cursor-not-allowed bg-gray-50"
               : "border-gray-300 cursor-pointer hover:border-blue-500 hover:bg-blue-50"
           }`}
@@ -145,8 +232,10 @@ export default function GalleryManager({
           </svg>
           {isUploading ? (
             <p className="text-sm text-gray-600">
-              Compressing &amp; uploading… {progress.done}/{progress.total}
+              {progress.stage}… {progress.done}/{progress.total}
             </p>
+          ) : driveStatus ? (
+            <p className="text-sm text-gray-600">{driveStatus}</p>
           ) : (
             <>
               <p className="text-sm font-medium text-gray-700">
@@ -165,10 +254,25 @@ export default function GalleryManager({
           accept="image/*"
           multiple
           onChange={handleFiles}
-          disabled={isUploading}
+          disabled={busy}
           className="hidden"
           aria-label="Upload gallery images"
         />
+        {isDrivePickerConfigured && (
+          <div className="mt-4 flex justify-center">
+            <button
+              type="button"
+              onClick={handleDriveImport}
+              disabled={busy}
+              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M7.71 3.5 1.15 15l3.43 6 6.55-11.5L7.71 3.5Zm1.32 0 6.56 11.5h6.86L15.89 3.5H9.03ZM9 16l-3.43 6h13.1l3.43-6H9Z" />
+              </svg>
+              Choose from Google Drive
+            </button>
+          </div>
+        )}
         {error && <p className="text-sm text-red-600 mt-3">{error}</p>}
       </div>
 

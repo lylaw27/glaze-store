@@ -1,142 +1,76 @@
-"use client"
-
 import Image from "next/image"
 import AddToCartButton from "./clientComponents/addToCartHome"
 import Link from "next/link"
-import { ProductWithParsedFields } from "@/types/product"
-import { useState, useRef } from "react"
-import { ChevronLeft, ChevronRight } from "lucide-react"
+import type { ProductWithParsedFields } from "@/types/product"
 
 interface ProductShowcaseProps {
   products: ProductWithParsedFields[];
+  title: string;
+  href: string;
 }
 
-export default function ProductShowcase({ products }: ProductShowcaseProps) {
-  const scrollContainerRef = useRef<HTMLDivElement>(null)
-  const [showLeftArrow, setShowLeftArrow] = useState(false)
-  const [showRightArrow, setShowRightArrow] = useState(true)
-
-  const scroll = (direction: 'left' | 'right') => {
-    if (scrollContainerRef.current) {
-      const scrollAmount = scrollContainerRef.current.offsetWidth * 0.8
-      const newScrollLeft = direction === 'left' 
-        ? scrollContainerRef.current.scrollLeft - scrollAmount
-        : scrollContainerRef.current.scrollLeft + scrollAmount
-      
-      scrollContainerRef.current.scrollTo({
-        left: newScrollLeft,
-        behavior: 'smooth'
-      })
-    }
-  }
-
-  const handleScroll = () => {
-    if (scrollContainerRef.current) {
-      const { scrollLeft, scrollWidth, clientWidth } = scrollContainerRef.current
-      setShowLeftArrow(scrollLeft > 0)
-      setShowRightArrow(scrollLeft < scrollWidth - clientWidth - 10)
-    }
-  }
-
+export default function ProductShowcase({ products, title, href }: ProductShowcaseProps) {
   const currency = (n: number) =>
     new Intl.NumberFormat("zh-HK", { style: "currency", currency: "HKD", minimumFractionDigits: 2 }).format(n)
 
   return (
-    <section className="py-20 bg-background">
-      <div className="container mx-auto px-4">
-        {/* Header */}
-        <div className="flex justify-end mb-8">
-          <Link href="/products" className="font-sans text-xs tracking-[0.15em] uppercase text-muted-foreground hover:text-foreground transition-colors">全部</Link>
-        </div>
+    <section aria-label={title} className="bg-background py-10 sm:py-14">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <h2 className="mb-5 font-serif text-lg font-normal text-foreground sm:mb-6 sm:text-xl">{title}</h2>
 
-        {/* Products Carousel */}
-        <div className="relative group">
-          {/* Left Arrow */}
-          {showLeftArrow && (
-            <button
-              onClick={() => scroll('left')}
-              className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-background/90 hover:bg-background border border-border p-2 transition-all duration-300 opacity-0 group-hover:opacity-100"
-              aria-label="Scroll left"
-            >
-              <ChevronLeft className="w-5 h-5 text-foreground" strokeWidth={1.25} />
-            </button>
-          )}
-
-          {/* Right Arrow */}
-          {showRightArrow && (
-            <button
-              onClick={() => scroll('right')}
-              className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-background/90 hover:bg-background border border-border p-2 transition-all duration-300 opacity-0 group-hover:opacity-100"
-              aria-label="Scroll right"
-            >
-              <ChevronRight className="w-5 h-5 text-foreground" strokeWidth={1.25} />
-            </button>
-          )}
-
-          {/* Scrollable Container */}
-          <div
-            ref={scrollContainerRef}
-            onScroll={handleScroll}
-            className="flex gap-6 overflow-x-auto scrollbar-hide scroll-smooth"
-            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-          >
-            {products?.map((product) => (
-              <Link
-                key={product.id}
-                className="group/item relative overflow-hidden flex-shrink-0 w-[280px]"
-                href={`/products/${product.handle}`}
-              >
-                {/* Product Image Container */}
-                <div className="relative aspect-square bg-muted overflow-hidden">
-                  {/* Main Image */}
-                  {product.images && product.images.length > 0 ? (
-                    <>
-                      <Image
-                        src={product.images[0]}
-                        alt={product.name}
-                        fill
-                        className="object-cover transition-opacity duration-300 group-hover/item:opacity-0 opacity-100"
-                      />
-                      
-                      <Image
-                        src={product.images[1] || product.images[0]}
-                        alt={`${product.name} alternate view`}
-                        fill
-                        className="object-cover transition-opacity duration-300 group-hover/item:opacity-100 opacity-0"
-                      />
-                    </>
-                  ) : (
-                    <Image 
-                      src="/placeholder.svg" 
-                      alt={product.name}
+        <div className="grid grid-cols-2 gap-x-4 gap-y-10 sm:gap-x-6 lg:grid-cols-4 lg:gap-x-8">
+          {products.map((product) => (
+            <article key={product.id} className="group/item min-w-0">
+              <div className="relative aspect-[4/5] overflow-hidden bg-muted">
+                <Link href={`/products/${product.handle}`} className="absolute inset-0">
+                  <Image
+                    src={product.images[0] || "/placeholder.svg"}
+                    alt={product.name}
+                    fill
+                    sizes="(max-width: 1023px) 50vw, (max-width: 1280px) 25vw, 280px"
+                    className={`object-cover transition-opacity duration-300 ${product.images[1] ? "group-hover/item:opacity-0" : ""}`}
+                  />
+                  {product.images[1] && (
+                    <Image
+                      src={product.images[1]}
+                      alt={`${product.name} alternate view`}
                       fill
-                      className="object-cover"
+                      sizes="(max-width: 1023px) 50vw, (max-width: 1280px) 25vw, 280px"
+                      className="object-cover opacity-0 transition-opacity duration-300 group-hover/item:opacity-100"
                     />
                   )}
+                </Link>
 
-                  {/* Add to Cart Button Overlay */}
-                  <div
-                    className="absolute inset-0 bg-black/20 flex items-center justify-center transition-all duration-300 opacity-0 group-hover/item:opacity-100"
-                  >
-                    <AddToCartButton 
-                      productId={product.id}
-                      name={product.name}
-                      price={product.price}
-                      image={product.images?.[0] || "/placeholder.svg"}
-                    />
-                  </div>
+                <div className="absolute inset-x-2 bottom-2 flex justify-center transition-opacity duration-300 sm:inset-x-4 sm:bottom-4 sm:opacity-0 sm:group-hover/item:opacity-100 sm:group-focus-within/item:opacity-100">
+                  <AddToCartButton
+                    productId={product.id}
+                    name={product.name}
+                    price={product.price}
+                    image={product.images[0] || "/placeholder.svg"}
+                  />
                 </div>
+              </div>
 
-                {/* Product Info */}
-                <div className="pt-3 text-left">
-                  <h3 className="font-serif text-base text-foreground mb-1 line-clamp-1">{product.name}</h3>
-                  <p className="text-sm text-muted-foreground">
-                    {currency(product.price)}
-                  </p>
-                </div>
-              </Link>
-            ))}
-          </div>
+              <div className="pt-4 text-left">
+                <h3 className="mb-1 font-serif text-sm leading-relaxed text-foreground sm:text-base">
+                  <Link href={`/products/${product.handle}`} className="line-clamp-2 transition-opacity hover:opacity-60">
+                    {product.name}
+                  </Link>
+                </h3>
+                <p className="text-xs text-muted-foreground sm:text-sm">{currency(product.price)}</p>
+              </div>
+            </article>
+          ))}
+        </div>
+
+        <div className="mt-12 flex justify-center sm:mt-16 lg:mt-20">
+          <Link
+            href={href}
+            aria-label={`查看全部${title}`}
+            className="inline-flex min-h-12 items-center justify-center bg-[#f1f2f2] px-8 py-4 text-sm text-foreground transition-colors hover:bg-[#e5e7e7] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-foreground sm:text-base"
+          >
+            查看全部
+          </Link>
         </div>
       </div>
     </section>

@@ -1,10 +1,12 @@
 export const hero1 = [
   {
     id: 1,
-    title: "「一鏈兩戴」創新設計",
-    subtitle: "自由翻轉前後造型，隨時隨地輕鬆轉換風格。",
+    // title: "「一鏈兩戴」創新設計",
+    // subtitle: "自由翻轉前後造型，隨時隨地輕鬆轉換風格。",
+    title: "「五行水晶手鏈」\n融合五行智慧",
+    subtitle: "以相生水晶手鏈，平衡你的專屬能量場。",
     buttonText: "查看更多",
-    image: "/images/hero1-1.jpeg",
+    image: "/images/hero1-1.jpg",
   },
   {
     id: 2,
@@ -39,10 +41,12 @@ export const hero1 = [
 export const hero1m = 
   {
     id: 1,
-    title: "「一鏈兩戴」創新設計",
-    subtitle: "自由翻轉前後造型，隨時隨地輕鬆轉換風格。",
+    // title: "「一鏈兩戴」創新設計",
+    // subtitle: "自由翻轉前後造型，隨時隨地輕鬆轉換風格。",
+    title: "「五行水晶手鏈」\n融合五行智慧",
+    subtitle: "以相生水晶手鏈，平衡你的專屬能量場。",
     buttonText: "查看更多",
-    image: "/images/hero1-1.jpeg",
+    image: "/images/hero1-1.jpg",
   }
   
 
