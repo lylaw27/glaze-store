@@ -2,6 +2,7 @@ import { query, mutation, QueryCtx, MutationCtx } from "./_generated/server";
 import { v, Infer } from "convex/values";
 import { Doc, Id } from "./_generated/dataModel";
 import { assertAdmin, toIso } from "./helpers";
+import { isValidImageUrl, looksLikeUrl } from "../lib/imageUrl";
 
 const variantOptionsValidator = v.array(
   v.object({ name: v.string(), values: v.array(v.string()) })
@@ -16,15 +17,22 @@ function byPosition(a: Doc<"products">, b: Doc<"products">): number {
   return b._creationTime - a._creationTime;
 }
 
-// CSV image entries starting with http(s):// are URLs; anything else is a gallery name.
-const isImageUrl = (entry: string) => /^https?:\/\//i.test(entry);
+const imageRefValidator = v.object({
+  storageId: v.optional(v.id("_storage")),
+  url: v.string(),
+});
 
-// Turn ordered gallery storage ids into {storageId, url}, dropping missing files.
-async function resolveImages(ctx: MutationCtx, storageIds: Id<"_storage">[]) {
+// Normalize ordered image refs: gallery files get a fresh served URL (dropped if the
+// file is gone); external URLs (no storageId) are kept as-is.
+async function resolveImages(ctx: MutationCtx, refs: Infer<typeof imageRefValidator>[]) {
   const images = [];
-  for (const storageId of storageIds) {
-    const url = await ctx.storage.getUrl(storageId);
-    if (url) images.push({ storageId, url });
+  for (const ref of refs) {
+    if (!ref.storageId) {
+      if (ref.url) images.push({ url: ref.url });
+      continue;
+    }
+    const url = await ctx.storage.getUrl(ref.storageId);
+    if (url) images.push({ storageId: ref.storageId, url });
   }
   return images;
 }
@@ -358,7 +366,7 @@ export const create = mutation({
     price: v.number(),
     stock: v.number(),
     status: v.string(),
-    imageStorageIds: v.array(v.id("_storage")),
+    images: v.array(imageRefValidator),
     categoryIds: v.array(v.id("categories")),
     variantOptions: variantOptionsValidator,
     addOnProductIds: v.array(v.id("products")),
@@ -367,8 +375,8 @@ export const create = mutation({
     assertAdmin(args.secret);
     const now = Date.now();
 
-    // Images are gallery files chosen in the form; keep the given order.
-    const images = await resolveImages(ctx, args.imageStorageIds);
+    // Images chosen in the form (gallery files or external URLs); keep the given order.
+    const images = await resolveImages(ctx, args.images);
 
     // Append to the end of the admin sort order.
     const all = await ctx.db.query("products").collect();
@@ -405,7 +413,7 @@ export const update = mutation({
     price: v.number(),
     stock: v.number(),
     status: v.string(),
-    imageStorageIds: v.array(v.id("_storage")), // full ordered image set
+    images: v.array(imageRefValidator), // full ordered image set
     categoryIds: v.array(v.id("categories")),
     variantOptions: variantOptionsValidator,
     addOnProductIds: v.array(v.id("products")),
@@ -416,9 +424,9 @@ export const update = mutation({
     const product = await ctx.db.get(args.id);
     if (!product) throw new Error("Product not found");
 
-    // The form sends the full desired image set in order (gallery files). Rebuild
-    // the array from it; do NOT delete storage — the gallery owns those files.
-    const images = await resolveImages(ctx, args.imageStorageIds);
+    // The form sends the full desired image set in order (gallery files and external
+    // URLs). Rebuild the array from it; do NOT delete storage — the gallery owns those files.
+    const images = await resolveImages(ctx, args.images);
 
     await ctx.db.patch(args.id, {
       name: args.name,
@@ -436,11 +444,9 @@ export const update = mutation({
 });
 
 // Bulk upsert from the admin CSV import, keyed by handle. References come in as
-// human-readable strings (category handles, gallery image names or URLs, add-on
-// handles) and are resolved here. Image URLs not yet in the gallery are downloaded
-// by the caller beforehand and passed as `downloaded`; they become gallery images.
-// All-or-nothing: if any row has an error, nothing is written and the downloaded
-// files are deleted.
+// human-readable strings (category handles, gallery image names or image URLs,
+// add-on handles) and are resolved here. Image URLs are saved as-is; invalid or
+// non-image URLs are skipped. All-or-nothing: if any row has an error, nothing is written.
 // `line` is the spreadsheet line number, used only for error messages.
 export const importCsv = mutation({
   args: {
@@ -460,14 +466,6 @@ export const importCsv = mutation({
         addOnHandles: v.array(v.string()),
       })
     ),
-    downloaded: v.array(
-      v.object({
-        url: v.string(),
-        storageId: v.id("_storage"),
-        name: v.string(),
-        size: v.number(),
-      })
-    ),
   },
   handler: async (ctx, args) => {
     assertAdmin(args.secret);
@@ -481,16 +479,9 @@ export const importCsv = mutation({
 
     // Gallery names aren't unique; an ambiguous name can't be resolved.
     const storageByName = new Map<string, Id<"_storage"> | null>();
-    const storageByUrl = new Map<string, Id<"_storage">>();
     for (const img of await ctx.db.query("galleryImages").collect()) {
       storageByName.set(img.name, storageByName.has(img.name) ? null : img.storageId);
-      if (img.sourceUrl) storageByUrl.set(img.sourceUrl, img.storageId);
     }
-    const downloadedByUrl = new Map(args.downloaded.map((d) => [d.url, d]));
-    const resolveImage = (entry: string) =>
-      isImageUrl(entry)
-        ? storageByUrl.get(entry) ?? downloadedByUrl.get(entry)?.storageId
-        : storageByName.get(entry);
 
     const allProducts = await ctx.db.query("products").collect();
     const productByHandle = new Map<string, Id<"products">>();
@@ -509,11 +500,10 @@ export const importCsv = mutation({
         if (!categoryByHandle.has(h)) err(`unknown category "${h}"`);
       }
       for (const n of row.images) {
-        const id = resolveImage(n);
-        if (id !== undefined && id !== null) continue;
-        if (isImageUrl(n)) err(`image URL "${n}" was not downloaded`);
-        else if (id === undefined) err(`image "${n}" not found in gallery`);
-        else err(`image name "${n}" matches multiple gallery images`);
+        if (looksLikeUrl(n)) continue;
+        const id = storageByName.get(n);
+        if (id === undefined) err(`image "${n}" not found in gallery`);
+        else if (id === null) err(`image name "${n}" matches multiple gallery images`);
       }
     }
     for (const row of args.rows) {
@@ -523,29 +513,7 @@ export const importCsv = mutation({
         }
       }
     }
-    if (errors.length > 0) {
-      for (const d of args.downloaded) await ctx.storage.delete(d.storageId);
-      return { created: 0, updated: 0, errors };
-    }
-
-    // Register newly downloaded images in the gallery (skipping any URL that is
-    // already there, whose download is then redundant).
-    for (const d of args.downloaded) {
-      if (storageByUrl.has(d.url)) {
-        await ctx.storage.delete(d.storageId);
-        continue;
-      }
-      const url = await ctx.storage.getUrl(d.storageId);
-      if (!url) continue;
-      await ctx.db.insert("galleryImages", {
-        storageId: d.storageId,
-        url,
-        name: d.name,
-        size: d.size,
-        sourceUrl: d.url,
-        updatedAt: now,
-      });
-    }
+    if (errors.length > 0) return { created: 0, updated: 0, errors };
 
     // Upsert products; new ones append to the end of the admin sort order.
     let nextPosition =
@@ -562,7 +530,13 @@ export const importCsv = mutation({
         status: row.status,
         images: await resolveImages(
           ctx,
-          row.images.map((n) => resolveImage(n)!)
+          row.images.flatMap((n) =>
+            looksLikeUrl(n)
+              ? isValidImageUrl(n)
+                ? [{ url: n }]
+                : []
+              : [{ storageId: storageByName.get(n)!, url: "" }]
+          )
         ),
         updatedAt: now,
       };

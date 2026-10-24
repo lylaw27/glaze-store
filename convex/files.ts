@@ -11,12 +11,3 @@ export const generateUploadUrl = mutation({
     return await ctx.storage.generateUploadUrl();
   },
 });
-
-// Deletes uploaded files that were never attached to anything (e.g. an aborted import).
-export const deleteFiles = mutation({
-  args: { secret: v.string(), storageIds: v.array(v.id("_storage")) },
-  handler: async (ctx, args) => {
-    assertAdmin(args.secret);
-    for (const id of args.storageIds) await ctx.storage.delete(id);
-  },
-});

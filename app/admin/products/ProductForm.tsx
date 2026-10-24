@@ -32,16 +32,19 @@ interface ProductFormProps {
   onClose?: () => void;
 }
 
+// Stable identity for a selected image: gallery storage id, or the URL for external images.
+const imageKey = (img: ProductImageRef) => img.storageId ?? img.url;
+
 // One draggable, removable thumbnail in the selected-images row.
 function SortableThumb({
   image,
   onRemove,
 }: {
   image: ProductImageRef;
-  onRemove: (storageId: string) => void;
+  onRemove: (key: string) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
-    useSortable({ id: image.storageId });
+    useSortable({ id: imageKey(image) });
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
@@ -64,7 +67,7 @@ function SortableThumb({
       </div>
       <button
         type="button"
-        onClick={() => onRemove(image.storageId)}
+        onClick={() => onRemove(imageKey(image))}
         className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center hover:bg-red-600 transition-colors"
         title="Remove image"
       >
@@ -200,16 +203,16 @@ export default function ProductForm({
     );
   };
 
-  const handleRemoveImage = (storageId: string) => {
-    setSelectedImages((prev) => prev.filter((s) => s.storageId !== storageId));
+  const handleRemoveImage = (key: string) => {
+    setSelectedImages((prev) => prev.filter((s) => imageKey(s) !== key));
   };
 
   const handleImageDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
     setSelectedImages((prev) => {
-      const oldIndex = prev.findIndex((s) => s.storageId === active.id);
-      const newIndex = prev.findIndex((s) => s.storageId === over.id);
+      const oldIndex = prev.findIndex((s) => imageKey(s) === active.id);
+      const newIndex = prev.findIndex((s) => imageKey(s) === over.id);
       if (oldIndex === -1 || newIndex === -1) return prev;
       return arrayMove(prev, oldIndex, newIndex);
     });
@@ -218,11 +221,8 @@ export default function ProductForm({
   const handleSubmit = async (formData: FormData) => {
     setIsLoading(true);
     try {
-      // Send the full ordered set of selected gallery image storage ids.
-      formData.set(
-        "imageStorageIds",
-        JSON.stringify(selectedImages.map((img) => img.storageId))
-      );
+      // Send the full ordered image set (gallery files and external URLs).
+      formData.set("images", JSON.stringify(selectedImages));
 
       // Add selected category IDs
       formData.set("categoryIds", JSON.stringify(selectedCategoryIds));
@@ -365,13 +365,13 @@ export default function ProductForm({
               onDragEnd={handleImageDragEnd}
             >
               <SortableContext
-                items={selectedImages.map((img) => img.storageId)}
+                items={selectedImages.map(imageKey)}
                 strategy={horizontalListSortingStrategy}
               >
                 <div className="flex flex-wrap gap-3">
                   {selectedImages.map((image) => (
                     <SortableThumb
-                      key={image.storageId}
+                      key={imageKey(image)}
                       image={image}
                       onRemove={handleRemoveImage}
                     />

@@ -1,13 +1,13 @@
 import { fetchQuery, fetchMutation } from "convex/nextjs";
 import { api } from "@/convex/_generated/api";
 import { revalidatePath } from "next/cache";
-import { adminSecret, importImageFromUrl } from "@/lib/convex";
+import { adminSecret } from "@/lib/convex";
 import type { Id } from "@/convex/_generated/dataModel";
 import type { GalleryImage } from "@/types/product";
 import ProductList from "./ProductList";
 import ProductForm from "./ProductForm";
 import ProductCsvTools from "./ProductCsvTools";
-import { isImageUrl, type ImportRow, type RowError } from "@/lib/productCsv";
+import type { ImportRow } from "@/lib/productCsv";
 import { AdminProduct } from "@/types";
 
 async function getProducts(): Promise<AdminProduct[]> {
@@ -46,10 +46,11 @@ export default async function ProductsPage() {
       (formData.get("addOnProductIds") as string) || "[]"
     ) as Id<"products">[];
 
-    // Images are gallery files chosen in the form; the form sends ordered storage ids.
-    const imageStorageIds = JSON.parse(
-      (formData.get("imageStorageIds") as string) || "[]"
-    ) as Id<"_storage">[];
+    // Ordered images chosen in the form: gallery files ({storageId, url}) or external URLs ({url}).
+    const images = JSON.parse((formData.get("images") as string) || "[]") as {
+      storageId?: Id<"_storage">;
+      url: string;
+    }[];
 
     await fetchMutation(api.products.create, {
       secret: adminSecret(),
@@ -59,7 +60,7 @@ export default async function ProductsPage() {
       price,
       stock,
       status,
-      imageStorageIds,
+      images,
       categoryIds,
       variantOptions,
       addOnProductIds,
@@ -89,10 +90,11 @@ export default async function ProductsPage() {
       (formData.get("addOnProductIds") as string) || "[]"
     ) as Id<"products">[];
 
-    // Full ordered set of gallery image storage ids the product should keep.
-    const imageStorageIds = JSON.parse(
-      (formData.get("imageStorageIds") as string) || "[]"
-    ) as Id<"_storage">[];
+    // Full ordered image set the product should keep (gallery files and external URLs).
+    const images = JSON.parse((formData.get("images") as string) || "[]") as {
+      storageId?: Id<"_storage">;
+      url: string;
+    }[];
 
     await fetchMutation(api.products.update, {
       secret: adminSecret(),
@@ -103,7 +105,7 @@ export default async function ProductsPage() {
       price,
       stock,
       status,
-      imageStorageIds,
+      images,
       categoryIds,
       variantOptions,
       addOnProductIds,
@@ -147,62 +149,13 @@ export default async function ProductsPage() {
 
   async function importProducts(rows: ImportRow[]) {
     "use server";
-    // Download image URLs that aren't in the gallery yet. Any failure aborts the
-    // import (and discards what was downloaded) so it stays all-or-nothing.
-    const knownUrls = new Set(
-      (await getGallery()).map((g) => g.sourceUrl).filter(Boolean)
-    );
-    const pending = [
-      ...new Set(rows.flatMap((r) => r.images).filter(isImageUrl)),
-    ].filter((url) => !knownUrls.has(url));
-
-    const downloaded: {
-      url: string;
-      storageId: Id<"_storage">;
-      name: string;
-      size: number;
-    }[] = [];
-    const errors: RowError[] = [];
-    const DOWNLOAD_CONCURRENCY = 4;
-    for (let i = 0; i < pending.length; i += DOWNLOAD_CONCURRENCY) {
-      await Promise.all(
-        pending.slice(i, i + DOWNLOAD_CONCURRENCY).map(async (url) => {
-          try {
-            downloaded.push({ url, ...(await importImageFromUrl(url)) });
-          } catch (err) {
-            const reason = err instanceof Error ? err.message : "download failed";
-            for (const r of rows) {
-              if (r.images.includes(url)) {
-                errors.push({
-                  line: r.line,
-                  message: `could not download image "${url}": ${reason}`,
-                });
-              }
-            }
-          }
-        })
-      );
-    }
-    if (errors.length > 0) {
-      if (downloaded.length > 0) {
-        await fetchMutation(api.files.deleteFiles, {
-          secret: adminSecret(),
-          storageIds: downloaded.map((d) => d.storageId),
-        });
-      }
-      errors.sort((a, b) => a.line - b.line);
-      return { created: 0, updated: 0, errors };
-    }
-
     // All-or-nothing upsert by handle; returns per-line errors without writing.
     const result = await fetchMutation(api.products.importCsv, {
       secret: adminSecret(),
       rows,
-      downloaded,
     });
 
     if (result.errors.length === 0) {
-      revalidatePath("/admin/gallery");
       revalidatePath("/admin/products");
       revalidatePath("/");
       revalidatePath("/products");

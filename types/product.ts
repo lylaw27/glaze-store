@@ -100,7 +100,7 @@ export interface ImageItem {
 // A reference to a gallery image stored on a product (admin shape).
 // Product.images (admin) is a JSON string of these objects, in display order.
 export interface ProductImageRef {
-  storageId: string;
+  storageId?: string; // absent for external image URLs
   url: string;
 }
 
@@ -113,7 +113,6 @@ export interface GalleryImage {
   size: number;
   width: number | null;
   height: number | null;
-  sourceUrl: string | null; // set for images imported from a URL via CSV
   createdAt: number;
 }
 

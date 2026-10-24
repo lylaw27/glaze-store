@@ -1,10 +1,11 @@
 import type { GalleryImage, Product, ProductImageRef, VariantOption } from "@/types/product";
+import { isValidImageUrl, looksLikeUrl } from "./imageUrl";
 
 // ---------------------------------------------------------------------------
 // Admin product CSV format. One row per product; multi-value cells use "|".
 //   categories: category handles      e.g. "vases|new-arrivals"
-//   images:     gallery image names or image URLs
-//               e.g. "vase1.jpg|https://example.com/vase1-side.png"
+//   images:     gallery image names or https image URLs (saved as-is; invalid or
+//               non-image URLs are skipped)  e.g. "vase1.jpg|https://x.com/a.png"
 //   variants:   Name:v1,v2|Name:v1    e.g. "Size:S,M,L|Color:Blue,Green"
 //   add_ons:    product handles       e.g. "gift-box|stand"
 // Export and import both go through this file so the two stay symmetric.
@@ -38,7 +39,7 @@ export interface ImportRow {
   stock: number;
   status: string;
   categoryHandles: string[];
-  images: string[]; // gallery image names and/or http(s) URLs, in display order
+  images: string[]; // gallery image names and/or image URLs, in display order
   variantOptions: VariantOption[];
   addOnHandles: string[];
 }
@@ -46,10 +47,6 @@ export interface ImportRow {
 export interface RowError {
   line: number;
   message: string;
-}
-
-export function isImageUrl(entry: string): boolean {
-  return /^https?:\/\//i.test(entry);
 }
 
 export function splitMulti(cell: string | undefined): string[] {
@@ -103,7 +100,7 @@ export function productsToCsvRecords(
         .filter(Boolean)
         .join("|"),
       images: images
-        .map((i) => nameByStorageId.get(i.storageId))
+        .map((i) => (i.storageId ? nameByStorageId.get(i.storageId) : i.url))
         .filter(Boolean)
         .join("|"),
       variants: formatVariants(p.variants?.[0]?.options ?? []),
@@ -164,16 +161,6 @@ export function recordsToImportRows(
       err(`invalid variants "${get("variants")}" (use Name:v1,v2|Name:v1)`);
     }
 
-    const images = splitMulti(get("images"));
-    for (const entry of images) {
-      if (!isImageUrl(entry)) continue;
-      try {
-        new URL(entry);
-      } catch {
-        err(`invalid image URL "${entry}"`);
-      }
-    }
-
     const description = get("description");
     rows.push({
       line,
@@ -184,7 +171,11 @@ export function recordsToImportRows(
       stock,
       status,
       categoryHandles: splitMulti(get("categories")),
-      images,
+      images: [
+        ...new Set(
+          splitMulti(get("images")).filter((e) => !looksLikeUrl(e) || isValidImageUrl(e))
+        ),
+      ],
       variantOptions: variantOptions ?? [],
       addOnHandles: splitMulti(get("add_ons")),
     });
