@@ -45,8 +45,13 @@ export default defineSchema({
     size: v.number(), // bytes after compression
     width: v.optional(v.number()),
     height: v.optional(v.number()),
+    // Set when the image was downloaded from a URL during CSV import; lets a
+    // re-import reuse the same gallery image instead of downloading it again.
+    sourceUrl: v.optional(v.string()),
     updatedAt: v.number(),
-  }).index("by_storage", ["storageId"]),
+  })
+    .index("by_storage", ["storageId"])
+    .index("by_sourceUrl", ["sourceUrl"]),
 
   productCategories: defineTable({
     productId: v.id("products"),

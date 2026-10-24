@@ -5,6 +5,7 @@ import Papa from "papaparse";
 import type { GalleryImage, Product } from "@/types/product";
 import {
   CSV_COLUMNS,
+  isImageUrl,
   productsToCsvRecords,
   recordsToImportRows,
   type ImportRow,
@@ -104,6 +105,7 @@ export default function ProductCsvTools({
   };
 
   const succeeded = result !== null && result.errors.length === 0;
+  const urlImageCount = new Set(rows.flatMap((r) => r.images).filter(isImageUrl)).size;
 
   return (
     <>
@@ -162,6 +164,8 @@ export default function ProductCsvTools({
                 {rows.length} product{rows.length === 1 ? "" : "s"} ready to import.
                 Products with an existing handle will be updated; new handles will be
                 created.
+                {urlImageCount > 0 &&
+                  ` ${urlImageCount} image URL${urlImageCount === 1 ? "" : "s"} will be downloaded into the gallery (if not already there).`}
               </p>
             )}
 
@@ -181,7 +185,11 @@ export default function ProductCsvTools({
                   disabled={isImporting}
                   className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
                 >
-                  {isImporting ? "Importing…" : "Import"}
+                  {isImporting
+                    ? urlImageCount > 0
+                      ? "Downloading & importing…"
+                      : "Importing…"
+                    : "Import"}
                 </button>
               )}
             </div>

@@ -3,7 +3,8 @@ import type { GalleryImage, Product, ProductImageRef, VariantOption } from "@/ty
 // ---------------------------------------------------------------------------
 // Admin product CSV format. One row per product; multi-value cells use "|".
 //   categories: category handles      e.g. "vases|new-arrivals"
-//   images:     gallery image names   e.g. "vase1.jpg|vase1-side.jpg"
+//   images:     gallery image names or image URLs
+//               e.g. "vase1.jpg|https://example.com/vase1-side.png"
 //   variants:   Name:v1,v2|Name:v1    e.g. "Size:S,M,L|Color:Blue,Green"
 //   add_ons:    product handles       e.g. "gift-box|stand"
 // Export and import both go through this file so the two stay symmetric.
@@ -37,7 +38,7 @@ export interface ImportRow {
   stock: number;
   status: string;
   categoryHandles: string[];
-  imageNames: string[];
+  images: string[]; // gallery image names and/or http(s) URLs, in display order
   variantOptions: VariantOption[];
   addOnHandles: string[];
 }
@@ -45,6 +46,10 @@ export interface ImportRow {
 export interface RowError {
   line: number;
   message: string;
+}
+
+export function isImageUrl(entry: string): boolean {
+  return /^https?:\/\//i.test(entry);
 }
 
 export function splitMulti(cell: string | undefined): string[] {
@@ -159,6 +164,16 @@ export function recordsToImportRows(
       err(`invalid variants "${get("variants")}" (use Name:v1,v2|Name:v1)`);
     }
 
+    const images = splitMulti(get("images"));
+    for (const entry of images) {
+      if (!isImageUrl(entry)) continue;
+      try {
+        new URL(entry);
+      } catch {
+        err(`invalid image URL "${entry}"`);
+      }
+    }
+
     const description = get("description");
     rows.push({
       line,
@@ -169,7 +184,7 @@ export function recordsToImportRows(
       stock,
       status,
       categoryHandles: splitMulti(get("categories")),
-      imageNames: splitMulti(get("images")),
+      images,
       variantOptions: variantOptions ?? [],
       addOnHandles: splitMulti(get("add_ons")),
     });

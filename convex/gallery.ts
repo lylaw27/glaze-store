@@ -24,6 +24,7 @@ export const list = query({
         size: row.size,
         width: row.width ?? null,
         height: row.height ?? null,
+        sourceUrl: row.sourceUrl ?? null,
         createdAt: row._creationTime,
       }))
     );

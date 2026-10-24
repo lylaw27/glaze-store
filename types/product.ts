@@ -113,6 +113,7 @@ export interface GalleryImage {
   size: number;
   width: number | null;
   height: number | null;
+  sourceUrl: string | null; // set for images imported from a URL via CSV
   createdAt: number;
 }
 

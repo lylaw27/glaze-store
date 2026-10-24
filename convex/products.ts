@@ -16,6 +16,9 @@ function byPosition(a: Doc<"products">, b: Doc<"products">): number {
   return b._creationTime - a._creationTime;
 }
 
+// CSV image entries starting with http(s):// are URLs; anything else is a gallery name.
+const isImageUrl = (entry: string) => /^https?:\/\//i.test(entry);
+
 // Turn ordered gallery storage ids into {storageId, url}, dropping missing files.
 async function resolveImages(ctx: MutationCtx, storageIds: Id<"_storage">[]) {
   const images = [];
@@ -433,8 +436,11 @@ export const update = mutation({
 });
 
 // Bulk upsert from the admin CSV import, keyed by handle. References come in as
-// human-readable strings (category handles, gallery image names, add-on handles)
-// and are resolved here. All-or-nothing: if any row has an error, nothing is written.
+// human-readable strings (category handles, gallery image names or URLs, add-on
+// handles) and are resolved here. Image URLs not yet in the gallery are downloaded
+// by the caller beforehand and passed as `downloaded`; they become gallery images.
+// All-or-nothing: if any row has an error, nothing is written and the downloaded
+// files are deleted.
 // `line` is the spreadsheet line number, used only for error messages.
 export const importCsv = mutation({
   args: {
@@ -449,9 +455,17 @@ export const importCsv = mutation({
         stock: v.number(),
         status: v.string(),
         categoryHandles: v.array(v.string()),
-        imageNames: v.array(v.string()),
+        images: v.array(v.string()),
         variantOptions: variantOptionsValidator,
         addOnHandles: v.array(v.string()),
+      })
+    ),
+    downloaded: v.array(
+      v.object({
+        url: v.string(),
+        storageId: v.id("_storage"),
+        name: v.string(),
+        size: v.number(),
       })
     ),
   },
@@ -467,9 +481,16 @@ export const importCsv = mutation({
 
     // Gallery names aren't unique; an ambiguous name can't be resolved.
     const storageByName = new Map<string, Id<"_storage"> | null>();
+    const storageByUrl = new Map<string, Id<"_storage">>();
     for (const img of await ctx.db.query("galleryImages").collect()) {
       storageByName.set(img.name, storageByName.has(img.name) ? null : img.storageId);
+      if (img.sourceUrl) storageByUrl.set(img.sourceUrl, img.storageId);
     }
+    const downloadedByUrl = new Map(args.downloaded.map((d) => [d.url, d]));
+    const resolveImage = (entry: string) =>
+      isImageUrl(entry)
+        ? storageByUrl.get(entry) ?? downloadedByUrl.get(entry)?.storageId
+        : storageByName.get(entry);
 
     const allProducts = await ctx.db.query("products").collect();
     const productByHandle = new Map<string, Id<"products">>();
@@ -487,10 +508,12 @@ export const importCsv = mutation({
       for (const h of row.categoryHandles) {
         if (!categoryByHandle.has(h)) err(`unknown category "${h}"`);
       }
-      for (const n of row.imageNames) {
-        const id = storageByName.get(n);
-        if (id === undefined) err(`image "${n}" not found in gallery`);
-        else if (id === null) err(`image name "${n}" matches multiple gallery images`);
+      for (const n of row.images) {
+        const id = resolveImage(n);
+        if (id !== undefined && id !== null) continue;
+        if (isImageUrl(n)) err(`image URL "${n}" was not downloaded`);
+        else if (id === undefined) err(`image "${n}" not found in gallery`);
+        else err(`image name "${n}" matches multiple gallery images`);
       }
     }
     for (const row of args.rows) {
@@ -500,7 +523,29 @@ export const importCsv = mutation({
         }
       }
     }
-    if (errors.length > 0) return { created: 0, updated: 0, errors };
+    if (errors.length > 0) {
+      for (const d of args.downloaded) await ctx.storage.delete(d.storageId);
+      return { created: 0, updated: 0, errors };
+    }
+
+    // Register newly downloaded images in the gallery (skipping any URL that is
+    // already there, whose download is then redundant).
+    for (const d of args.downloaded) {
+      if (storageByUrl.has(d.url)) {
+        await ctx.storage.delete(d.storageId);
+        continue;
+      }
+      const url = await ctx.storage.getUrl(d.storageId);
+      if (!url) continue;
+      await ctx.db.insert("galleryImages", {
+        storageId: d.storageId,
+        url,
+        name: d.name,
+        size: d.size,
+        sourceUrl: d.url,
+        updatedAt: now,
+      });
+    }
 
     // Upsert products; new ones append to the end of the admin sort order.
     let nextPosition =
@@ -517,7 +562,7 @@ export const importCsv = mutation({
         status: row.status,
         images: await resolveImages(
           ctx,
-          row.imageNames.map((n) => storageByName.get(n)!)
+          row.images.map((n) => resolveImage(n)!)
         ),
         updatedAt: now,
       };
