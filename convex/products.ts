@@ -472,10 +472,17 @@ export const importCsv = mutation({
     const now = Date.now();
     const errors: { line: number; message: string }[] = [];
 
-    const categoryByHandle = new Map<string, Id<"categories">>();
-    for (const cat of await ctx.db.query("categories").collect()) {
-      categoryByHandle.set(cat.handle, cat._id);
+    // Categories match by handle or by display name (what the admin UI shows),
+    // case-insensitively. Handles win; a name shared by several categories is ambiguous.
+    const categories = await ctx.db.query("categories").collect();
+    const categoryByKey = new Map<string, Id<"categories"> | null>();
+    for (const cat of categories) {
+      const key = cat.name.trim().toLowerCase();
+      categoryByKey.set(key, categoryByKey.has(key) ? null : cat._id);
     }
+    for (const cat of categories) categoryByKey.set(cat.handle.toLowerCase(), cat._id);
+    const resolveCategory = (ref: string) => categoryByKey.get(ref.trim().toLowerCase());
+    const knownCategories = categories.map((c) => `${c.name} (${c.handle})`).join(", ");
 
     // Gallery names aren't unique; an ambiguous name can't be resolved.
     const storageByName = new Map<string, Id<"_storage"> | null>();
@@ -497,7 +504,12 @@ export const importCsv = mutation({
       }
       fileHandles.add(row.handle);
       for (const h of row.categoryHandles) {
-        if (!categoryByHandle.has(h)) err(`unknown category "${h}"`);
+        const id = resolveCategory(h);
+        if (id === undefined) {
+          err(`unknown category "${h}" (use a name or handle: ${knownCategories})`);
+        } else if (id === null) {
+          err(`category name "${h}" matches multiple categories; use its handle`);
+        }
       }
       for (const n of row.images) {
         if (looksLikeUrl(n)) continue;
@@ -557,7 +569,7 @@ export const importCsv = mutation({
         ctx,
         productByHandle.get(row.handle)!,
         {
-          categoryIds: row.categoryHandles.map((h) => categoryByHandle.get(h)!),
+          categoryIds: [...new Set(row.categoryHandles.map((h) => resolveCategory(h)!))],
           variantOptions: row.variantOptions,
           addOnProductIds: row.addOnHandles.map((h) => productByHandle.get(h)!),
         },

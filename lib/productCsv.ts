@@ -3,7 +3,7 @@ import { isValidImageUrl, looksLikeUrl } from "./imageUrl";
 
 // ---------------------------------------------------------------------------
 // Admin product CSV format. One row per product; multi-value cells use "|".
-//   categories: category handles      e.g. "vases|new-arrivals"
+//   categories: category handles or names (case-insensitive)  e.g. "earrings|手鏈"
 //   images:     gallery image names or https image URLs (saved as-is; invalid or
 //               non-image URLs are skipped)  e.g. "vase1.jpg|https://x.com/a.png"
 //   variants:   Name:v1,v2|Name:v1    e.g. "Size:S,M,L|Color:Blue,Green"
