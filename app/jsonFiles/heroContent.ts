@@ -3,14 +3,14 @@ export const hero1 = [
     id: 1,
     // title: "「一鏈兩戴」創新設計",
     // subtitle: "自由翻轉前後造型，隨時隨地輕鬆轉換風格。",
-    title: "「五行水晶手鏈」\n融合五行智慧",
+    title: "訂製五行水晶手鏈",
     subtitle: "以相生水晶手鏈，平衡你的專屬能量場。",
-    buttonText: "查看更多",
+    buttonText: "立即訂製",
     image: "/images/hero1-1.jpg",
   },
   {
     id: 2,
-    title: "「五行水晶手鏈」融合五行智慧",
+    title: "訂製五行水晶手鏈",
     subtitle: "以相生水晶手鏈，平衡你的專屬能量場。",
     buttonText: "立即選購",
     image: "/images/hero1-2.jpeg",
@@ -26,14 +26,14 @@ export const hero1 = [
     id: 4,
     title: "「一鏈兩戴」創新設計",
     subtitle: "自由翻轉前後造型，隨時隨地輕鬆轉換風格。",
-    buttonText: "查看更多",
+    buttonText: "立即訂製",
     image: "/images/hero1-4.jpeg",
   },
     {
     id: 5,
     title: "「一鏈兩戴」創新設計",
     subtitle: "自由翻轉前後造型，隨時隨地輕鬆轉換風格。",
-    buttonText: "查看更多",
+    buttonText: "立即訂製",
     image: "/images/hero1-5.jpeg",
   },
 ]
@@ -43,9 +43,10 @@ export const hero1m =
     id: 1,
     // title: "「一鏈兩戴」創新設計",
     // subtitle: "自由翻轉前後造型，隨時隨地輕鬆轉換風格。",
-    title: "「五行水晶手鏈」\n融合五行智慧",
+    title: "訂製五行水晶手鏈",
     subtitle: "以相生水晶手鏈，平衡你的專屬能量場。",
-    buttonText: "查看更多",
+    buttonText: "立即訂製",
+    buttonLink: "https://glaze-hk.com",
     image: "/images/hero1-1.jpg",
   }
   
@@ -70,7 +71,7 @@ export const hero2 = [
 export const hero2m = 
   {
     id: 2,
-    title: "「五行水晶手鏈」融合五行智慧",
+    title: "訂製五行水晶手鏈",
     subtitle: "以相生水晶手鏈，平衡你的專屬能量場。",
     buttonText: "立即選購",
     image: "/images/hero2-1.jpeg",
@@ -99,4 +100,13 @@ export const hero4 = {
   subtitle: "為您舒適的家搜尋精品擺設。",
   buttonText: "立即探索",
   image: "/images/hero4-1.jpeg",
+}
+
+export const heroCustom = {
+  id: 5,
+  title: "購買現貨",
+  subtitle: "手鏈 · 頸鏈 · 925S耳環 · 925S戒指",
+  buttonText: "立即購買",
+  buttonLink: "/products",
+  image: "/images/banner4.jpg",
 }
